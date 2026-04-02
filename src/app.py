@@ -1,6 +1,6 @@
 import socket
 import re
-from process import parser
+from processer import parser, process
 
 HOST = ''
 PORT = 50007
@@ -16,8 +16,8 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             data = conn.recv(1024)
             if not data: break
             action, key, value = parser(data)
-            process(action,key,value)
-            check = f"{action}, then {key}, and {value}"
+            res = process(action,key,value)
+            check = f"Result: {res}"
             conn.sendall(check.encode("utf-8"))
 
 

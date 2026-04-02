@@ -1,4 +1,4 @@
-from src.process import *
+from src.processer import *
 import pytest
 
 def test_parser() -> None:
@@ -13,3 +13,18 @@ def test_parser() -> None:
     assert parser(s3) == ("PUT", "", "")
     assert parser(s4) == ("GET", "hi", "")
     assert parser(s5) == ("GET", "", "")
+
+def test_process() -> None:
+    a1,k1,v1 = "PUT","hi-key","hello"
+    a2,k2 = "GET","hi-key"
+    assert process(a1,k1,v1) == ""
+    assert process(a2,k2,"") == "hello"
+
+def test_put_process() -> None:
+    put_process("one", "two")
+    assert get_process("one") == "two"
+
+
+def test_get_process() -> None:
+    # wrote it in already
+    assert get_process("two") == "one"
