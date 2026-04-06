@@ -17,7 +17,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             if not data: break
             action, key, value = parser(data)
             res = process(action,key,value)
-            check = f"Result: {res}"
+            check = f"Result: {res}\n"
             conn.sendall(check.encode("utf-8"))
 
 

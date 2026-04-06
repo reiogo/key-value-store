@@ -4,7 +4,7 @@ from pathlib import Path
 def parser(raw_data) -> tuple[str, str, str]:
     data = raw_data.decode("utf-8")
 
-    pat = re.compile(r"(GET|PUT)\s?([^ ]*)?\s?([^ ]*)?")
+    pat = re.compile(r"(GET|PUT)\s*([^\s]*)?\s*([^\s]*)?")
     m = pat.search(data)
 
     if m:
@@ -15,9 +15,9 @@ def parser(raw_data) -> tuple[str, str, str]:
     else:
         return ("NULL", "", "")
 
-def put_process(key,value) ->bool:
-    p = Path('/usr/key-value/storage/tmp.txt')
-    if p.exists():
+def put_process(key,value,storage) ->bool:
+    p = Path(storage)
+    if p.exists() and key:
         with p.open("a") as f:
             f.write(f'{key},{value}\n')
         return True
@@ -25,23 +25,23 @@ def put_process(key,value) ->bool:
         return False
 
 
-def get_process(key) -> str:
-    p = Path('/usr/key-value/storage/tmp.txt')
+def get_process(key, storage) -> str:
+    p = Path(storage)
+    res = ""
     if p.exists():
         with p.open() as file:
             reader = csv.reader(file)
             for row in reader:
-                if row[0] == key:
-                    return row[1]
-    return ""
+                if len(row) > 1 and row[0] == key:
+                    res = row[1]
+    return res
 
-def process(action, key, value) -> str:
+def process(action, key, value, storage = '/usr/key-value/storage/tmp.txt') -> str:
     if action == "GET":
-        return get_process(key)
+        return get_process(key,storage)
     elif action == "PUT":
-        put_process(key, value)
+        put_process(key, value,storage)
         return ""
-
     else:
         return ""
 
