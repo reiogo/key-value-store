@@ -39,7 +39,7 @@ This project is a TCP-based key-value store built using an iterative (tracer bul
 - Append-only log (CSV format)
 - Each operation is recorded as a new line
 - No compaction (yet)
-- Reads require scanning log (next idea is to use index)
+- Reads update the hash index
 
 ---
 
@@ -49,11 +49,11 @@ This project is a TCP-based key-value store built using an iterative (tracer bul
 
 - Simple write path (append-only)
 - Easy to debug (human-readable format)
-- Durable (log-based persistence)
+- Fast reads with O(1)(amortized) indexing
 
 ### Limitations
 
-- Slow reads without indexing (O(n))
+- The in-memory hash is lost on each restart
 - File grows indefinitely (no compaction)
 - No concurrency control
 
@@ -61,7 +61,7 @@ This project is a TCP-based key-value store built using an iterative (tracer bul
 
 ## Future Improvements
 
-- In-memory index for O(1) reads
+- Rebuild in-memory hash from log
 - Log compaction
 - Improved command parsing
 - Concurrency handling

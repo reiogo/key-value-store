@@ -1,7 +1,9 @@
 import re
 import csv
 from pathlib import Path
-def parser(raw_data) -> tuple[str, str, str]:
+import my_hash as myhash
+
+def parser(raw_data:str) -> tuple[str, str, str]:
     data = raw_data.decode("utf-8")
 
     pat = re.compile(r"(GET|PUT)\s*([^\s]*)?\s*([^\s]*)?")
@@ -15,32 +17,47 @@ def parser(raw_data) -> tuple[str, str, str]:
     else:
         return ("NULL", "", "")
 
-def put_process(key,value,storage) ->bool:
+def process_put(key:str,value:str,storage:str) ->bool:
     p = Path(storage)
-    if p.exists() and key:
-        with p.open("a") as f:
-            f.write(f'{key},{value}\n')
-        return True
-    else:
-        return False
+    try:
+        if key:
+            with p.open("a") as f:
+                offset = f.tell()
+                f.write(f'{key},{value}\n')
+                #return offset
+                print(offset)
+                return offset
+    except Error as e:
+        print(f"Error: {e}")
 
 
-def get_process(key, storage) -> str:
+def process_get(key:str, storage:str, offset:int) -> str:
     p = Path(storage)
     res = ""
+    if not key:
+        return ""
     if p.exists():
-        with p.open() as file:
+        with p.open("r") as file:
+            file.seek(offset, 0)
             reader = csv.reader(file)
-            for row in reader:
-                if len(row) > 1 and row[0] == key:
-                    res = row[1]
+            reader = reader.__next__()
+            if len(reader) > 1 and reader[0] == key:
+                res = reader[1]
     return res
 
-def process(action, key, value, storage = '/usr/key-value/storage/tmp.txt') -> str:
+def process(action:str, key:str, value:str, storage:str = '/usr/key-value/storage/tmp.txt') -> str:
+    inMemoryHash = myhash.create()
+
     if action == "GET":
-        return get_process(key,storage)
+        offset = myhash.get_offset(key,inMemoryHash)
+        if offset:
+            return process_get(key,storage, offset)
+        else:
+            return ""
     elif action == "PUT":
-        put_process(key, value,storage)
+        offset = process_put(key, value, storage)
+        if offset:
+            myhash.update(key, offset, inMemoryHash)
         return ""
     else:
         return ""

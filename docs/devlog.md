@@ -13,5 +13,24 @@ Build end-to-end flow: TCP -> parse -> process(store/retrieve) -> respond
 - Reads require scanning entire file → O(n)
 
 ### Next steps
-- Introduce in-memory index
-- Separate protocol handling from storage layer
+- Introduce an in-memory index mapping keys to file offsets.
+
+### Tradeoff
+
+- Improved read performance to O(1)
+- Increased memory usage
+- Added complexity in maintaining index consistency
+
+### Observation
+
+The in-memory index enables O(1) reads but is lost on restart.
+The shift to indexing means that the scanning read is no longer supported
+
+### Decision
+
+Rebuild the index from the append-only log at startup.
+
+### Tradeoff
+
+- Simple and correct
+- Startup time increases with log size
