@@ -1,25 +1,9 @@
-import socket
-from processer import parser, process
+from src.server import serve
+from src.my_hash import recreate_hash
 
 HOST = ''
 PORT = 50007
+STORAGE = '/usr/key-value/storage/tmp.txt'
+inMemoryHash = recreate_hash(STORAGE)
 
-
-with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    s.bind((HOST,PORT))
-    s.listen(1) #backlog is set to 1
-    conn, addr = s.accept()
-    with conn:
-        print('Connect by', addr)
-        while True:
-            data = conn.recv(1024)
-            if not data: break
-            action, key, value = parser(data)
-            res = process(action,key,value)
-            check = f"Result: {res}\n"
-            conn.sendall(check.encode("utf-8"))
-
-
-
-
+serve(HOST, PORT, inMemoryHash, STORAGE)

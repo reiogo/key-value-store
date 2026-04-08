@@ -10,6 +10,7 @@ This project is built using a **tracer bullet approach**—a minimal end-to-end 
 
 - TCP server using Python sockets  
 - Simple text protocol (`GET`, `PUT`)  
+- In-Memory Hash
 - Append-only log (CSV-based persistence)  
 - Docker-based development environment  
 
@@ -29,7 +30,7 @@ The `docs/` directory contains design notes and a development log documenting tr
 
 ## Stack
 
-- Python (initial implementation)
+- Python (pytest, mypy)
 - Docker
 - Concepts from Designing Data-Intensive Applications (Martin Kleppmann)  
 - (Planned) lower-level implementation in C
@@ -38,6 +39,6 @@ The `docs/` directory contains design notes and a development log documenting tr
 
 ## Future Work
 
-- Indexing for faster reads  
+- Benchmarking
 - Log compaction  
 - Improved concurrency handling  

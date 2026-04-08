@@ -1,9 +1,9 @@
 import re
 import csv
 from pathlib import Path
-import my_hash as myhash
+import src.my_hash as myhash
 
-def parser(raw_data:str) -> tuple[str, str, str]:
+def parser(raw_data:bytes) -> tuple[str, str, str]:
     data = raw_data.decode("utf-8")
 
     pat = re.compile(r"(GET|PUT)\s*([^\s]*)?\s*([^\s]*)?")
@@ -17,7 +17,7 @@ def parser(raw_data:str) -> tuple[str, str, str]:
     else:
         return ("NULL", "", "")
 
-def process_put(key:str,value:str,storage:str) ->bool:
+def process_put(key:str,value:str,storage:str) ->int:
     p = Path(storage)
     try:
         if key:
@@ -25,10 +25,11 @@ def process_put(key:str,value:str,storage:str) ->bool:
                 offset = f.tell()
                 f.write(f'{key},{value}\n')
                 #return offset
-                print(offset)
                 return offset
-    except Error as e:
+    except Exception as e:
         print(f"Error: {e}")
+
+    return 0
 
 
 def process_get(key:str, storage:str, offset:int) -> str:
@@ -40,17 +41,15 @@ def process_get(key:str, storage:str, offset:int) -> str:
         with p.open("r") as file:
             file.seek(offset, 0)
             reader = csv.reader(file)
-            reader = reader.__next__()
-            if len(reader) > 1 and reader[0] == key:
-                res = reader[1]
+            row = reader.__next__()
+            if len(row) > 1 and row[0] == key:
+                res = row[1]
     return res
 
-def process(action:str, key:str, value:str, storage:str = '/usr/key-value/storage/tmp.txt') -> str:
-    inMemoryHash = myhash.create()
-
+def process(action:str, key:str, value:str, inMemoryHash:dict, storage:str) -> str:
     if action == "GET":
         offset = myhash.get_offset(key,inMemoryHash)
-        if offset:
+        if offset > -1:
             return process_get(key,storage, offset)
         else:
             return ""

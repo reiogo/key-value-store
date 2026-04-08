@@ -26,6 +26,16 @@ Build end-to-end flow: TCP -> parse -> process(store/retrieve) -> respond
 The in-memory index enables O(1) reads but is lost on restart.
 The shift to indexing means that the scanning read is no longer supported
 
+## Observation
+The server and app were mixed, but here I realized I need a place specifically
+to start up, so that I can rebuild the in-memory hash on restart.
+
+### Decision
+Refactor the server to server.py, and make some functions more functional.
+
+### Result
+- Clearer flow
+
 ### Decision
 
 Rebuild the index from the append-only log at startup.
@@ -34,3 +44,5 @@ Rebuild the index from the append-only log at startup.
 
 - Simple and correct
 - Startup time increases with log size
+
+## 2026-04-08 — O(1) reads and rebuild log on restart complete

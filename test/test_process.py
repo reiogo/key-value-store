@@ -1,5 +1,6 @@
 from src.processer import *
 import pytest
+from src.my_hash import recreate_hash
 def test_parser() -> None:
     s1 = b"PUT hi hello"
     s2 = b"PUT hi "
@@ -16,8 +17,9 @@ def test_parser() -> None:
 def test_process() -> None:
     a1,k1,v1 = "PUT","hi-key","hello"
     a2,k2 = "GET","hi-key"
-    assert process(a1,k1,v1,'/usr/key-value/storage/test.txt') == ""
-    assert process(a2,k2,"",'/usr/key-value/storage/test.txt') == "hello"
+    d1 = recreate_hash('/usr/key-value/storage/test.txt')
+    assert process(a1,k1,v1,d1,'/usr/key-value/storage/test.txt') == ""
+    assert process(a2,k2,"",d1,'/usr/key-value/storage/test.txt') == "hello"
 
 def test_process_put() -> None:
     o1 = process_put("t1", "two",'/usr/key-value/storage/test.txt')
@@ -29,7 +31,6 @@ def test_process_put() -> None:
 
 
 def test_process_get() -> None:
-    pass
-    # assert process_get("test2", '/usr/key-value/storage/test.txt') == ""
+    assert process_get("one", '/usr/key-value/storage/test_rebuild.txt', 0) == "wrong"
     # assert process_get("hi-key", '/usr/key-value/storage/test.txt') == "hello"
     # assert process_get("test1", '/usr/key-value/storage/test.txt') == "correct"

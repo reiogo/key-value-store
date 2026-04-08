@@ -17,6 +17,7 @@ This project is a TCP-based key-value store built using an iterative (tracer bul
 
 - **Storage Engine**
   - Interfaces with persistence layer
+  - In-Memory Hash keeps track of byte offsets
 
 - **Write-Ahead Log (WAL)**
   - Append-only file (CSV format)
@@ -36,6 +37,7 @@ This project is a TCP-based key-value store built using an iterative (tracer bul
 
 ## Storage Design
 
+- Recreate in-memory hash on restart
 - Append-only log (CSV format)
 - Each operation is recorded as a new line
 - No compaction (yet)
@@ -50,10 +52,11 @@ This project is a TCP-based key-value store built using an iterative (tracer bul
 - Simple write path (append-only)
 - Easy to debug (human-readable format)
 - Fast reads with O(1)(amortized) indexing
+- persistent storage with in-memory hash
 
 ### Limitations
 
-- The in-memory hash is lost on each restart
+- keys must fit within memory
 - File grows indefinitely (no compaction)
 - No concurrency control
 
@@ -61,10 +64,11 @@ This project is a TCP-based key-value store built using an iterative (tracer bul
 
 ## Future Improvements
 
-- Rebuild in-memory hash from log
 - Log compaction
+- Snapshot of compressed logs
 - Improved command parsing
 - Concurrency handling
+- Benchmarking
 
 ---
 
