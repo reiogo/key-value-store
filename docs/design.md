@@ -20,7 +20,7 @@ This project is a TCP-based key-value store built using an iterative (tracer bul
   - In-Memory Hash keeps track of byte offsets
 
 - **Write-Ahead Log (WAL)**
-  - Append-only file (CSV format)
+  - Append-only file (length-prefixed binary log)
   - Stores all write operations
 
 ---
@@ -38,7 +38,7 @@ This project is a TCP-based key-value store built using an iterative (tracer bul
 ## Storage Design
 
 - Recreate in-memory hash on restart
-- Append-only log (CSV format)
+- Append-only log (length-prefixed[32-bit] binary log)
 - Each operation is recorded as a new line
 - No compaction (yet)
 - Reads update the hash index

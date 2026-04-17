@@ -26,6 +26,9 @@ Build end-to-end flow: TCP -> parse -> process(store/retrieve) -> respond
 The in-memory index enables O(1) reads but is lost on restart.
 The shift to indexing means that the scanning read is no longer supported
 
+
+## 2026-04-08 — O(1) reads and rebuild log on restart complete
+
 ## Observation
 The server and app were mixed, but here I realized I need a place specifically
 to start up, so that I can rebuild the in-memory hash on restart.
@@ -45,4 +48,17 @@ Rebuild the index from the append-only log at startup.
 - Simple and correct
 - Startup time increases with log size
 
-## 2026-04-08 — O(1) reads and rebuild log on restart complete
+## 2026-04-17 — Change from CSV format to length-prefixed binary log
+
+## Observation
+The CSV format will become limiting for compaction and might complicate other features.
+
+## Decision
+Switch from csv formatting to 32-bit length prefixed binary log
+
+## Tradeoff
+- Harder to debug
+- Better performance and better space usage.
+
+### Decision
+Create a new module called wal.py and refactor the csv format

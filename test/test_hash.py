@@ -3,13 +3,10 @@ import pytest
 
 def test_recreate_hash() -> None:
     d1 = {}
-    d1['one'] = 44
-    d1['hi-key'] = 31
-    d1['key'] = 52
-    d1['test1'] = 74
-    d1['t1'] = 88
+    test_url = '/usr/key-value/storage/test_rebuild.bin'
+    d1['hi'] = 60
 
-    assert recreate_hash('/usr/key-value/storage/test_rebuild.txt') == d1
+    assert recreate_hash(test_url) == d1
 
 
 def test_get_offset() -> None:

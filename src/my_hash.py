@@ -1,4 +1,6 @@
 from pathlib import Path
+import os
+import src.wal as wal
 import csv
 
 def recreate_hash(storageLocation:str) -> dict:
@@ -6,14 +8,10 @@ def recreate_hash(storageLocation:str) -> dict:
     myhash = {}
     offset = 0
     try:
-        with p.open("r") as file:
-            while True:
-                offset = file.tell()
-                line = file.readline()
-                if not line:
-                    break
-                key = line.split(",")[0]
-                myhash[key] = offset
+        while offset != os.path.getsize(p.resolve()):
+            key,next_offset = wal.iter_wal(offset,storageLocation)
+            myhash[key] = offset
+            offset = next_offset
 
     except Exception as e:
         print(f"Error: {e}")
