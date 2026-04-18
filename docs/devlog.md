@@ -62,3 +62,15 @@ Switch from csv formatting to 32-bit length prefixed binary log
 
 ### Decision
 Create a new module called wal.py and refactor the csv format
+
+## 2026-04-18 — Add Deletes/Tombstones and Checksum
+
+## Observation
+Better to lock in the main format/features before compaction
+
+## Decision
+Add type to the binary header and also a crc32 checksum
+Also add new storage files to test each module independently.
+
+## Tradeoff
+- Better reliability with checksum, but more complicated processing and header

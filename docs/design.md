@@ -22,6 +22,8 @@ This project is a TCP-based key-value store built using an iterative (tracer bul
 - **Write-Ahead Log (WAL)**
   - Append-only file (length-prefixed binary log)
   - Stores all write operations
+  - Tombstones for deletes
+  - CRC32 checksum for detecting partial writes
 
 ---
 
@@ -38,10 +40,9 @@ This project is a TCP-based key-value store built using an iterative (tracer bul
 ## Storage Design
 
 - Recreate in-memory hash on restart
-- Append-only log (length-prefixed[32-bit] binary log)
-- Each operation is recorded as a new line
+- Append-only log (length-prefixed binary log: 
+                   [type][key-size][key][value-size][value][crc32])
 - No compaction (yet)
-- Reads update the hash index
 
 ---
 
@@ -50,13 +51,13 @@ This project is a TCP-based key-value store built using an iterative (tracer bul
 ### Advantages
 
 - Simple write path (append-only)
-- Easy to debug (human-readable format)
 - Fast reads with O(1)(amortized) indexing
 - persistent storage with in-memory hash
 
 ### Limitations
 
-- keys must fit within memory
+- Keys must fit within memory
+- Sequential reads are not efficient
 - File grows indefinitely (no compaction)
 - No concurrency control
 
@@ -65,15 +66,9 @@ This project is a TCP-based key-value store built using an iterative (tracer bul
 ## Future Improvements
 
 - Log compaction
-- Snapshot of compressed logs
-- Improved command parsing
+- Hint files of merged logs
 - Concurrency handling
 - Benchmarking
 
 ---
 
-## Non-Goals (for now)
-
-- Distributed system
-- Strong consistency guarantees
-- Complex query support

@@ -9,7 +9,7 @@ This project is built using a **tracer bullet approach**—a minimal end-to-end 
 ## Current System
 
 - TCP server using Python sockets  
-- Simple text protocol (`GET`, `PUT`)  
+- Simple text protocol (`GET`, `PUT` `DELETE`)  
 - In-Memory Hash
 - Append-only log (length-prefixed binary log)  
 - Docker-based development environment  

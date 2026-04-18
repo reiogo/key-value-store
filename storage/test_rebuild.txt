@@ -1,9 +1,0 @@
-one,wrong
-hi-key,hello
-one,two
-hi-key,hello
-one,two
-key,value
-test1,wrong
-test1,correct
-t1,two

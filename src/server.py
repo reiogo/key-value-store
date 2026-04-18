@@ -1,5 +1,6 @@
 import socket
-from src.store import parser, process
+from src.store import process
+from src.parser import parser
 def serve(host, port, imh, storage):
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -12,6 +13,6 @@ def serve(host, port, imh, storage):
                 data = conn.recv(1024)
                 if not data: break
                 action, key, value = parser(data)
-                res = process(action,key,value,imh,storage)
+                res = process(storage,imh,action,key,value)
                 check = f"Result: {res}\n"
                 conn.sendall(check.encode("utf-8"))
