@@ -1,7 +1,9 @@
 import socket
 from src.store import process
 from src.parser import parser
-def serve(host, port, imh, storage):
+from pathlib import Path
+
+def serve(host:str, port:int, imh:dict, storage:Path):
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         s.bind((host,port))

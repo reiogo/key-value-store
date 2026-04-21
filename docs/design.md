@@ -2,7 +2,7 @@
 
 ## Overview
 
-This project is a TCP-based key-value store built using an iterative (tracer bullet) approach. The system currently supports basic `GET` and `PUT` operations with append-only persistence.
+This project is a TCP-based key-value store built using an iterative (tracer bullet) approach. The system currently supports `GET`,`PUT`,`DELETE` operations with append-only persistence.
 
 ---
 
@@ -24,6 +24,7 @@ This project is a TCP-based key-value store built using an iterative (tracer bul
   - Stores all write operations
   - Tombstones for deletes
   - CRC32 checksum for detecting partial writes
+  - background process for merge and compaction
 
 ---
 
@@ -42,7 +43,6 @@ This project is a TCP-based key-value store built using an iterative (tracer bul
 - Recreate in-memory hash on restart
 - Append-only log (length-prefixed binary log: 
                    [type][key-size][key][value-size][value][crc32])
-- No compaction (yet)
 
 ---
 
@@ -58,14 +58,12 @@ This project is a TCP-based key-value store built using an iterative (tracer bul
 
 - Keys must fit within memory
 - Sequential reads are not efficient
-- File grows indefinitely (no compaction)
 - No concurrency control
 
 ---
 
 ## Future Improvements
 
-- Log compaction
 - Hint files of merged logs
 - Concurrency handling
 - Benchmarking

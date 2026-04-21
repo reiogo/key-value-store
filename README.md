@@ -13,6 +13,7 @@ This project is built using a **tracer bullet approach**—a minimal end-to-end 
 - In-Memory Hash
 - Append-only log (length-prefixed binary log)  
 - Docker-based development environment  
+- Background merging and compaction
 
 ---
 
@@ -40,5 +41,4 @@ The `docs/` directory contains design notes and a development log documenting tr
 ## Future Work
 
 - Benchmarking
-- Log compaction  
 - Improved concurrency handling  

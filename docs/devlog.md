@@ -74,3 +74,15 @@ Also add new storage files to test each module independently.
 
 ## Tradeoff
 - Better reliability with checksum, but more complicated processing and header
+
+## 2026-04-21 — Add merge and compaction
+
+## Observation
+- Log files grow indefinitely, wasted space from duplicate keys
+
+## Decision
+- Add background process to merge and compact inactive log files.
+
+## Tradeoff
+- Added complexity of reads and background processes
+- read might be slightly slower due to checking multiple files
