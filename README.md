@@ -1,44 +1,30 @@
 # Key-Value Store
 
-A key-value store is a simple data storage system where a key acts as an identifier and a value is the associated data.
+A persistent key-value storage engine built from scratch in Python, without generative AI assistance. Architecture decisions were made independently, informed by *Designing Data-Intensive Applications* (Kleppmann) and hands-on iteration.
 
-This project is built using a **tracer bullet approach**—a minimal end-to-end implementation that cuts through all layers of the system, followed by iterative refinement based on observed limitations and system design principles.
-
----
-
-## Current System
-
-- TCP server using Python sockets  
-- Simple text protocol (`GET`, `PUT` `DELETE`)  
-- In-Memory Hash
-- Append-only log (length-prefixed binary log)  
-- Docker-based development environment  
-- Background merging and compaction
+Built using a **tracer bullet approach** — a minimal end-to-end implementation cutting through all system layers, refined iteratively based on observed limitations and design tradeoffs.
 
 ---
 
-## Philosophy
+## Architecture
 
-Rather than designing upfront, I started with a working vertical slice and am evolving the system incrementally. Each iteration focuses on improving correctness, performance, and system design.
-
----
-
-## Documentation
-
-The `docs/` directory contains design notes and a development log documenting tradeoffs, limitations, and iteration decisions.
-
----
-
-## Stack
-
-- Python (pytest, mypy)
-- Docker
-- Concepts from Designing Data-Intensive Applications (Martin Kleppmann)  
-- (Planned) lower-level implementation in C
+- TCP server using Python's `socket` library with a simple binary protocol (`GET`, `PUT`, `DELETE`)
+- In-memory hash index for amortized O(1) reads
+- Append-only log with length-prefixed binary encoding
+- Background merge and compaction for space reclamation
+- Crash recovery via log replay on startup
+- Docker-based development environment
+- Type-checked with mypy, tested with pytest
 
 ---
 
-## Future Work
+## Design Philosophy
 
-- Benchmarking
-- Improved concurrency handling  
+Rather than designing upfront, I started with a working vertical slice and evolved the system incrementally. Each iteration focuses on improving correctness, performance, and design clarity. Tradeoffs, limitations, and iteration decisions are documented in `docs/`.
+
+---
+
+## Planned Work
+
+- Benchmarking and performance characterization
+- Improved concurrency handling
