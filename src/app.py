@@ -1,7 +1,7 @@
 from multiprocessing import Process
 from src.server import serve
 from src.my_hash import recreate_hash
-from src.disk_manage import compact_and_merge
+from src.segment_manager import compact_and_merge
 from pathlib import Path
 
 HOST = ''

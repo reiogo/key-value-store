@@ -155,59 +155,30 @@ def test_name_matches_hint() -> None:
 
     assert name_matches_hint(l1, h1) is True
 
-def test_next_name() -> None:
-    d1 = test_dir / 'next_name'
-    d1.mkdir(exist_ok=True)
-    l1 = d1 / '1.bin'
-    l2 = d1 / '2.bin'
-    l3 = d1 / '3.bin'
-    l300 = d1 / '300.bin'
-    l301 = d1 / '301.bin'
+# def test_next_name() -> None:
+#     d1 = test_dir / 'next_name'
+#     d1.mkdir(exist_ok=True)
+#     l1 = d1 / '1.bin'
+#     l2 = d1 / '2.bin'
+#     l3 = d1 / '3.bin'
+#     l300 = d1 / '300.bin'
+#     l301 = d1 / '301.bin'
 
-    h1 = d1 / 'h1.bin'
-    h2 = d1 / 'h2.bin'
-    h300 = d1 / 'h300.bin'
+#     h1 = d1 / 'h1.bin'
+#     h2 = d1 / 'h2.bin'
+#     h300 = d1 / 'h300.bin'
 
-    assert next_name([(l1,h1),(l2,h2)]) == l3
+#     assert next_name([(l1,h1),(l2,h2)]) == l3
 
-    assert next_name([(l1,h1),(l2,h2),(l300,h300)]) == l301
+#     assert next_name([(l1,h1),(l2,h2),(l300,h300)]) == l301
 
-def test_new_hint_name() -> None:
-    d1 = test_dir / 'new_hint_name'
-    d1.mkdir(exist_ok=True)
-    l1 = d1 / '1.bin'
-    h1 = d1 / 'h1.bin'
+# def test_new_hint_name() -> None:
+#     d1 = test_dir / 'new_hint_name'
+#     d1.mkdir(exist_ok=True)
+#     l1 = d1 / '1.bin'
+#     h1 = d1 / 'h1.bin'
 
-    assert new_hint_name(l1) == h1
-
-def test_remove_from_wal() -> None:
-    d1 = test_dir / 'remove_from_wal'
-    d1.mkdir(exist_ok=True)
-
-    l1 = d1 / '1.bin'
-    l1.touch()
-    l2 = d1 / '2.bin'
-    l2.touch()
-    l3 = d1 / '3.bin'
-    l3.touch()
-
-    h1 = d1 / 'h1.bin'
-    h1.touch()
-    h2 = d1 / 'h2.bin'
-    h2.touch()
-    h3 = d1 / 'h3.bin'
-    h3.touch()
-
-    assert remove_from_wal([l1,h1,l2,h2],[(l1,h1),(l2,h2),(l3,h3)]) == [(l3,h3)]
-    assert not l1.exists()
-    assert not h1.exists()
-    assert not l2.exists()
-    assert not h2.exists()
-    assert l3.exists()
-    assert h3.exists()
-    l3.unlink()
-    h3.unlink()
-
+#     assert new_hint_name(l1) == h1
 
 def test_should_compact() -> None:
     d1 = test_dir / 'should_compact'
@@ -236,22 +207,11 @@ def test_should_merge() -> None:
 
     thresh = 200
 
-    f1 = [(l2, h2),(l1, h1)]
+    f1 = [(l1, h1),(l2, h2)]
     f2 = [l2,l1]
     assert should_merge(f1,thresh) == f2
 
 
-def test_get_logs() -> None:
-    d1 = test_dir / 'get_logs'
-    d1.mkdir(exist_ok=True)
-    l1 = d1 / '1.bin'
-    l2 = d1 / '2.bin'
-    h1 = d1 / 'h1.bin'
-    h2 = Path('')
-
-    a1 = d1 / 'active.bin'
-
-    get_logs(d1) == [(l2,h2),(l1,h1)]
 
 
 

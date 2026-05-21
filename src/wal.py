@@ -8,58 +8,7 @@ def name_matches_hint(log:Path, hint:Path):
     hint_parts = hint.parts
     return "h"+log_parts[-1] == hint_parts[-1]
 
-def next_name(all_logs:list[tuple[Path,Path]],not_this:list[Path]=[]) -> Path:
-    i = len(all_logs) - 1
-    top = all_logs[i][0]
-    while i > -1 and top in not_this:
-        i -= 1
-        top = all_logs[i][0]
-
-    top_log_parts = top.parts
-    name = top_log_parts[-1]
-    match = re.search(r"([0-9]*)\.bin",name)
-    log_id = '0'
-    if match:
-        log_id = match.group(1)
-    new_id = str(int(log_id) + 1)
-    new_name = new_id + ".bin"
-    return top.parent / new_name
-
-def new_hint_name(log:Path) -> Path:
-    log_parts = log.parts
-    name = log_parts[-1]
-    hint_name = "h" + name
-    return log.parent / hint_name
-
-
-def remove_from_wal(logs_to_remove:list[Path], all_logs:list[tuple[Path,Path]]) -> list[tuple[Path,Path]]:
-    updated_logs = []
-    for file, hint in all_logs:
-        if file not in logs_to_remove:
-            updated_logs.append((file,hint))
-        else:
-            file.unlink()
-            if hint in logs_to_remove:
-                hint.unlink()
-    return updated_logs
-
-def should_compact(files:list[tuple[Path,Path]]) -> list[Path]:
-    res = []
-    for file, hint_file in files:
-        if hint_file == Path(""):
-            res.append(file)
-    return res
-
-def should_merge(files:list[tuple[Path,Path]], threshold) -> list[Path]:
-    res = []
-    total_size = 0
-    for file, hint_file in files:
-        total_size += file.stat().st_size
-        if total_size > threshold:
-            break
-        res.append(file)
-    return res
-
+# gets the files from the storage directory
 def get_logs(directory:Path)->list[tuple[Path,Path]]:
     res:list[tuple[Path,Path]] = []
     logs = []
@@ -84,6 +33,52 @@ def get_logs(directory:Path)->list[tuple[Path,Path]]:
 
     res.sort()
     return res
+
+# def next_name(all_logs:list[tuple[Path,Path]],not_this:list[Path]=[]) -> Path:
+#     i = len(all_logs) - 1
+#     top = all_logs[i][0]
+#     while i > -1 and top in not_this:
+#         i -= 1
+#         top = all_logs[i][0]
+
+#     top_log_parts = top.parts
+#     name = top_log_parts[-1]
+#     match = re.search(r"([0-9]*)\.bin",name)
+#     log_id = '0'
+#     if match:
+#         log_id = match.group(1)
+#     new_id = str(int(log_id) + 1)
+#     new_name = new_id + ".bin"
+#     return top.parent / new_name
+
+# def new_hint_name(log:Path) -> Path:
+#     log_parts = log.parts
+#     name = log_parts[-1]
+#     hint_name = "h" + name
+#     return log.parent / hint_name
+
+# determines which files don't have a hint file yet
+# returns a list of files
+def should_compact(files:list[tuple[Path,Path]]) -> list[Path]:
+    res = []
+    for file, hint_file in files:
+        if hint_file == Path(""):
+            res.append(file)
+    return res
+
+# determines which files should be merged
+# returns a list of files without the hint files
+def should_merge(files:list[tuple[Path,Path]], threshold) -> list[Path]:
+    files.reverse()
+    res = []
+    total_size = 0
+    for file, hint_file in files:
+        total_size += file.stat().st_size
+        if total_size > threshold:
+            break
+        res.append(file)
+    return res
+
 
 def compactWal(given_hash:dict, storage:Path, value_flag) -> dict:
     check_passed = True

@@ -9,7 +9,7 @@ def test_recreate_hash() -> None:
     d1 = test_dir / 'recreate_hash'
     d1.mkdir(exist_ok=True)
     l1 = d1 / 'active.bin'
-    l1.unlink()
+    l1.unlink(missing_ok=True)
     l1.touch()
     dict1 = {'hi':0}
 

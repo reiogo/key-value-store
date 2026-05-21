@@ -2,6 +2,7 @@ from pathlib import Path
 import zlib
 import src.my_hash as myhash
 import src.wal as wal
+import src.segment_manager as seg_manager
 
 # check if offset is valid. -1 is invalid flag
 def offset_is_valid(offset:int) -> bool:
@@ -9,6 +10,7 @@ def offset_is_valid(offset:int) -> bool:
 
 # search the inactive files for the key
 def search(key:str,directory:Path) -> tuple[Path,dict]:
+    # files = seg_manager.get_files(directory)
     files = wal.get_logs(directory)
     cur_hash:dict = {}
     for file, hint_file in files:
