@@ -3,10 +3,7 @@ import os
 import zlib
 import src.my_hash as myhash
 import re
-def name_matches_hint(log:Path, hint:Path):
-    log_parts = log.parts
-    hint_parts = hint.parts
-    return "h"+log_parts[-1] == hint_parts[-1]
+import src.segment_manager as seg
 
 # gets the files from the storage directory
 def get_logs(directory:Path)->list[tuple[Path,Path]]:
@@ -25,7 +22,7 @@ def get_logs(directory:Path)->list[tuple[Path,Path]]:
     for log in logs:
         has_hint = False
         for hint in hints:
-            if name_matches_hint(log,hint):
+            if seg.name_matches_hint(log,hint):
                 res.append((log,hint))
                 has_hint = True
         if not has_hint:
@@ -59,12 +56,12 @@ def get_logs(directory:Path)->list[tuple[Path,Path]]:
 
 # determines which files don't have a hint file yet
 # returns a list of files
-def should_compact(files:list[tuple[Path,Path]]) -> list[Path]:
-    res = []
-    for file, hint_file in files:
-        if hint_file == Path(""):
-            res.append(file)
-    return res
+# def should_compact(files:list[tuple[Path,Path]]) -> list[Path]:
+#     res = []
+#     for file, hint_file in files:
+#         if hint_file == Path(""):
+#             res.append(file)
+#     return res
 
 # determines which files should be merged
 # returns a list of files without the hint files
@@ -80,6 +77,9 @@ def should_merge(files:list[tuple[Path,Path]], threshold) -> list[Path]:
     return res
 
 
+# Compact a given log file
+# package_type ={ 0 is append, 1 is delete}
+# value_flag describes the value of the kv hash returned
 def compactWal(given_hash:dict, storage:Path, value_flag) -> dict:
     check_passed = True
     offset = 0
@@ -103,6 +103,7 @@ def compactWal(given_hash:dict, storage:Path, value_flag) -> dict:
         print(f"Error: {e}")
     return given_hash
 
+# Compute size of file, which is the offset
 def offset(storage:Path) -> int:
     try:
         with storage.open("ab") as file:
@@ -110,6 +111,7 @@ def offset(storage:Path) -> int:
     except OSError as e:
         raise RuntimeError(f"Getting offset failed. Path: {storage}") from e
 
+# Compute the byte string for a given key/value pair
 def package_kv(key:str,value:str="",package_type:int=0) -> bytes:
     package_type_byte = package_type.to_bytes(1,"big")
 
@@ -126,6 +128,43 @@ def package_kv(key:str,value:str="",package_type:int=0) -> bytes:
 
     return package + checksum
 
+# Compute byte representation of a hint key/value pair
+def package_hint_kv(key:str, val:int) -> bytes:
+    s_val = str(val)
+    key_bytes = key.encode("utf-8")
+    value_bytes = s_val.encode("utf-8")
+
+    return (len(key_bytes).to_bytes(4,"big")
+            + key_bytes
+            + len(value_bytes).to_bytes(4,"big")
+            + value_bytes)
+
+# Read given hint file
+# Close file when val is an empty string.
+def read_hint_file(hint:Path) -> dict[str,int]:
+    try:
+        hashmap = {}
+        with hint.open("rb") as file:
+            while True:
+                klen_raw = file.read(4)
+                klen = int.from_bytes(klen_raw, byteorder="big")
+                k_raw = file.read(klen)
+                key = k_raw.decode("utf-8")
+
+                vlen_raw = file.read(4)
+                vlen = int.from_bytes(vlen_raw, byteorder="big")
+                v_raw = file.read(vlen)
+                value = v_raw.decode("utf-8")
+                if value == "":
+                    break
+                hashmap[key] = int(value)
+        return hashmap
+    except OSError as e:
+        raise RuntimeError(f"Function: read_hint_file failed. Path: {hint}") from e
+
+
+
+#Add bytes to a given file
 def wal_append(word:bytes, storage:Path) -> bool:
     try:
         with storage.open("ab") as f:
@@ -139,6 +178,7 @@ def read(offset:int, storage:Path) -> str:
     check_passed,package_type,key,value,offset = read_wal(offset, storage)
     return value
 
+# Read all information about the key/value data from a given offset
 def read_wal(offset:int, storage:Path) -> tuple[bool,int,str,str,int]:
     try:
         with storage.open("rb") as file:

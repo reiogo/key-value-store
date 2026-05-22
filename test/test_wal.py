@@ -147,13 +147,6 @@ def test_compact_wal() -> None:
     assert compactWal({},l1, "value_as_int") == dict3
     assert compactWal({},l1, "tombstones") == dict4
 
-def test_name_matches_hint() -> None:
-    d1 = test_dir / 'name_matches_hint'
-    d1.mkdir(exist_ok=True)
-    l1 = d1 / '1.bin'
-    h1 = d1 / 'h1.bin'
-
-    assert name_matches_hint(l1, h1) is True
 
 # def test_next_name() -> None:
 #     d1 = test_dir / 'next_name'
@@ -180,19 +173,19 @@ def test_name_matches_hint() -> None:
 
 #     assert new_hint_name(l1) == h1
 
-def test_should_compact() -> None:
-    d1 = test_dir / 'should_compact'
-    d1.mkdir(exist_ok=True)
+# def test_should_compact() -> None:
+#     d1 = test_dir / 'should_compact'
+#     d1.mkdir(exist_ok=True)
 
-    l1 = d1 / '1.bin'
-    l2 = d1 / '2.bin'
+#     l1 = d1 / '1.bin'
+#     l2 = d1 / '2.bin'
 
-    h1 = d1 / 'h1.bin'
-    h2 = Path('')
+#     h1 = d1 / 'h1.bin'
+#     h2 = Path('')
 
-    f1 = [(l2, h2),(l1, h1)]
-    f2 = [l2]
-    assert should_compact(f1) == f2
+#     f1 = [(l2, h2),(l1, h1)]
+#     f2 = [l2]
+#     assert should_compact(f1) == f2
 
 def test_should_merge() -> None:
     d1 = test_dir / 'should_merge'
@@ -210,6 +203,31 @@ def test_should_merge() -> None:
     f1 = [(l1, h1),(l2, h2)]
     f2 = [l2,l1]
     assert should_merge(f1,thresh) == f2
+
+def test_package_hint_kv() -> None:
+    k1 = "hi"
+    v1 = "0"
+    b1 = (len(k1.encode("utf-8")).to_bytes(4, "big")
+          + k1.encode("utf-8")
+          + len(v1.encode("utf-8")).to_bytes(4, "big")
+          + v1.encode("utf-8"))
+
+    assert (package_hint_kv("hi", 0) == b1)
+
+def test_read_hint_file() -> None:
+    d1 = test_dir / 'read_hint_file'
+    d1.mkdir(exist_ok=True)
+    h1 = d1 / 'h1.bin'
+    h1.unlink(missing_ok=True)
+    h1.touch()
+
+    hashmap = {"hi": 0}
+    wal_append(package_hint_kv("hi", 0), h1)
+    assert(read_hint_file(h1) == hashmap)
+    hashmap = {"hi": 0, "hi2": 11}
+    wal_append(package_hint_kv("hi2", 11), h1)
+    assert(read_hint_file(h1) == hashmap)
+
 
 
 

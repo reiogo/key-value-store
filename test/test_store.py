@@ -1,6 +1,7 @@
 from src.store import *
 import pytest
 from src.my_hash import recreate_hash
+import src.wal as wal
 import zlib
 from pathlib import Path
 
@@ -31,4 +32,39 @@ def test_process() -> None:
     assert process(d1,dict1,a6,k6) == "ca va?"
     assert process(d1,dict1,a7,k7,v7) == "PUT succeeded"
     assert process(d1,dict1,a8,k8) == "bye"
+
+def test_fetch() -> None:
+    d1 = test_dir / 'fetch'
+    d1.mkdir(exist_ok=True)
+    a1 = d1 / 'active.bin'
+    a1.touch()
+    l1 = d1 / '1.bin'
+    l1.touch()
+    h1 = d1 / 'h1.bin'
+    h1.touch()
+
+    imh = {}
+    put("hi", "bye", d1, imh)
+    wal.wal_append(wal.package_kv("yellow", "submarine",0),l1)
+    wal.wal_append(wal.package_hint_kv("yellow", 0),h1)
+    assert(fetch("yellow",d1,imh) == "submarine")
+    assert(fetch("hi",d1,imh) == "bye")
+    assert(fetch("hat",d1,imh) == "")
+
+
+def test_put() -> None:
+    d1 = test_dir / 'put'
+    d1.mkdir(exist_ok=True)
+    a1 = d1 / 'active.bin'
+    a1.unlink(missing_ok=True)
+    a1.touch()
+    imh = {}
+
+    put("hi", "bye", d1, imh)
+    assert(imh == {"hi": 0})
+    assert(wal.read_wal(0,a1) == (True, 0, "hi", "bye", 18))
+    put("hello", "bello", d1, imh)
+    assert(imh == {"hello": 18, "hi" : 0})
+    assert(wal.read_wal(18,a1) == (True, 0, "hello", "bello", 41))
+
 

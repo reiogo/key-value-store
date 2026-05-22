@@ -8,8 +8,7 @@ HOST = ''
 PORT = 50007
 STORAGE = Path('/usr/key-value/storage/')
 initial_log = STORAGE / "active.bin"
-if not initial_log.exists():
-    initial_log.touch()
+initial_log.touch(exist_ok=True)
 inMemoryHash = recreate_hash(STORAGE)
 
 serve(HOST, PORT, inMemoryHash, STORAGE)
