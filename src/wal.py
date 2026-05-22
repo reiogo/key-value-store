@@ -77,31 +77,70 @@ def should_merge(files:list[tuple[Path,Path]], threshold) -> list[Path]:
     return res
 
 
-# Compact a given log file
+# # Compact a given log file
+# # package_type ={ 0 is append, 1 is delete}
+# # value_flag describes the value of the kv hash returned
+# def compactWal(given_hash:dict, storage:Path, value_flag) -> dict:
+#     check_passed = True
+#     offset = 0
+#     try:
+#         while offset != storage.stat().st_size and check_passed:
+#             check_passed,package_type,key,value,next_offset = read_wal(offset,storage)
+#             if package_type == 0 and value_flag != "tombstones":
+#                 if value_flag == "offset":
+#                     given_hash[key] = offset
+#                 elif value_flag == "value":
+#                     given_hash[key] = value
+#                 elif value_flag == "value_as_int":
+#                     given_hash[key] = int(value)
+#             elif package_type == 1:
+#                 myhash.delete(key, given_hash)
+#                 if value_flag == "tombstones":
+#                     given_hash[key] = ""
+#             offset = next_offset
+
+#     except Exception as e:
+#         print(f"Error: {e}")
+#     return given_hash
+
+# Compute hash from a given log file
 # package_type ={ 0 is append, 1 is delete}
-# value_flag describes the value of the kv hash returned
-def compactWal(given_hash:dict, storage:Path, value_flag) -> dict:
+# val_type is "offsets" or "values"
+def create_hash(hsh:dict, log:Path, val_type) -> dict:
     check_passed = True
     offset = 0
     try:
-        while offset != storage.stat().st_size and check_passed:
-            check_passed,package_type,key,value,next_offset = read_wal(offset,storage)
-            if package_type == 0 and value_flag != "tombstones":
-                if value_flag == "offset":
-                    given_hash[key] = offset
-                elif value_flag == "value":
-                    given_hash[key] = value
-                elif value_flag == "value_as_int":
-                    given_hash[key] = int(value)
+        while offset != log.stat().st_size and check_passed:
+            check_passed,package_type,key,value,next_offset = read_wal(offset,log)
+            if package_type == 0:
+                if val_type == "offsets":
+                    hsh[key] = offset
+                elif val_type == "values":
+                    hsh[key] = value
             elif package_type == 1:
-                myhash.delete(key, given_hash)
-                if value_flag == "tombstones":
-                    given_hash[key] = ""
+                myhash.delete(key, hsh)
             offset = next_offset
 
     except Exception as e:
         print(f"Error: {e}")
-    return given_hash
+    return hsh
+
+# Compute dictionary of tombstoned values for a given log
+def create_tombstones(hsh:dict, log:Path) -> dict:
+    check_passed = True
+    offset = 0
+    try:
+        while offset != log.stat().st_size and check_passed:
+            check_passed,package_type,key,value,next_offset = read_wal(offset,log)
+            if package_type == 0 and key in hsh:
+                myhash.delete(key,hsh)
+            if package_type == 1:
+                hsh[key] = ""
+            offset = next_offset
+
+    except Exception as e:
+        print(f"Error: {e}")
+    return hsh
 
 # Compute size of file, which is the offset
 def offset(storage:Path) -> int:
@@ -164,12 +203,13 @@ def read_hint_file(hint:Path) -> dict[str,int]:
 
 
 
-#Add bytes to a given file
-def wal_append(word:bytes, storage:Path) -> bool:
+# Add bytes to a given file
+# Return offset
+def wal_append(word:bytes, storage:Path) -> int:
     try:
         with storage.open("ab") as f:
             f.write(word)
-            return True
+            return f.tell()
     except OSError as e:
         raise RuntimeError(f"Wal append failed. Path: {storage}") from e
 

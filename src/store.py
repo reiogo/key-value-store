@@ -31,20 +31,21 @@ def fetch(key:str, directory:Path, imh:dict[str,int]) -> str:
 def put(key:str, value:str, directory:Path, imh:dict[str,int]) -> bool:
     active_file = directory / "active.bin"
     offset = wal.offset(active_file)
-    return (wal.wal_append(wal.package_kv(key,value,package_type=0), active_file)
-                and myhash.update(key, offset, imh))
+    wal.wal_append(wal.package_kv(key,value,package_type=0), active_file)
+    myhash.update(key, offset, imh)
+    return True
+
 
 # format and append tombstone; update in memory hash
-def remove(key:str, storage:Path,imh:dict[str,int]) -> str:
-    wal.wal_append(wal.package_kv(key,"",package_type=1), storage)
+def remove(key:str, directory:Path,imh:dict[str,int]) -> str:
+    active_file = directory / "active.bin"
+    wal.wal_append(wal.package_kv(key,"",package_type=1), active_file)
     myhash.delete(key, imh)
     return "DELETE succeeded"
 
 
 # takes the action and splits the processing
 def process(directory:Path, in_memory_hash:dict, action:str, key:str, value:str="") -> str:
-
-    active_file = directory / "active.bin"
     if action == "GET":
         res = fetch(key,directory,in_memory_hash)
         if res:
@@ -57,26 +58,7 @@ def process(directory:Path, in_memory_hash:dict, action:str, key:str, value:str=
         else:
             return "PUT failed"
     elif action == "DELETE":
-        return remove(key,active_file,in_memory_hash)
+        return remove(key,directory,in_memory_hash)
     else:
         return "Error"
-
-
-# # search the inactive files for the key
-# def search(key:str,directory:Path) -> tuple[Path,dict]:
-#     # files = seg.get_files(directory)
-#     files = wal.get_logs(directory)
-#     cur_hash:dict = {}
-#     for file, hint_file in files:
-#         if hint_file:
-#             cur_hash = wal.compactWal(cur_hash, hint_file, "value_as_int")
-#         else:
-#             # there is a chance to optimize here by setting compactWal to "value"
-#             print(file)
-#             cur_hash = wal.compactWal(cur_hash, file, "offset")
-#         if key in cur_hash:
-#             return (file, cur_hash)
-#     # an empty hash returns offset_value of -1
-#     # which trigers get failed in read()
-#     return (Path(""), {})
 

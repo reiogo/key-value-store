@@ -23,48 +23,73 @@ def test_log_id() -> None:
     assert(log_id(l2) == 2)
     assert(log_id(l50000) == 50000)
 
+def _put_helper(key, val, l1, h1):
+    wal.wal_append(wal.package_kv(key, val),l1)
+    wal.wal_append(wal.package_hint_kv(key, wal.offset(h1)),h1)
+
 def test_tombstone() -> None:
     d1 = test_dir / 'tombstone'
     d1.mkdir(exist_ok=True)
+    a1 = d1 / 'active.bin'
     l1 = d1 / '1.bin'
-    l2 = d1 / '2.bin'
+    h1 = d1 / 'h1.bin'
+    imh = {}
 
-    f1 = [l1,l2]
+    f1 = [l1,a1]
 
     l1.unlink(missing_ok=True)
-    l2.unlink(missing_ok=True)
     l1.touch()
-    l2.touch()
-    store.put("hi", "what",l1,{})
-    store.put("hi", "excuse me",l1,{})
-    store.put("excalibur", "excuse me",l1,{})
-    store.remove("excalibur",l1,{})
-    store.put("hello", "donatello",l2,{})
-    store.put("hello", "domingo",l2,{})
-    store.remove("hello",l1,{})
-    store.put("excalibur", "excaliwhat",l2,{})
+    h1.unlink(missing_ok=True)
+    h1.touch()
+    store.put("hi", "what",d1,imh)
+    store.put("hi", "excuse me",d1,imh)
+    store.put("excalibur", "excuse me",d1,imh)
+    store.remove("excalibur",d1,imh)
+    _put_helper("hello", "donatello", l1, h1)
+    wal.wal_append(wal.package_kv("hello", "domingo",0),l1)
+    # wal.wal_append(wal.package_hint_kv("hello", 14),h1)
+    wal.wal_append(wal.package_kv("hello","",package_type=1), l1)
+    _put_helper("excalibur", "excaliwhat", l1, h1)
 
     assert tombstones(f1) == {"excalibur":"", "hello":""}
 
-def test_merge_kvs() -> None:
-    d1 = test_dir / 'merge_kvs'
-    d1.mkdir(exist_ok=True)
-    l1 = d1 / '1.bin'
-    l2 = d1 / '2.bin'
-    f1 = [l1,l2]
 
+def test_merge_kvs() -> None:
+    d1 = test_dir / 'merged_kv'
+    d1.mkdir(exist_ok=True)
+    a1 = d1 / 'active.bin'
+    l1 = d1 / '1.bin'
+    h1 = d1 / 'h1.bin'
+    l2 = d1 / '2.bin'
+    h2 = d1 / 'h2.bin'
+    imh = {}
+    f1 = [a1,l1,l2]
+
+    a1.unlink(missing_ok=True)
+    a1.touch()
     l1.unlink(missing_ok=True)
+    l1.touch()
+    h1.unlink(missing_ok=True)
+    h1.touch()
     l2.unlink(missing_ok=True)
-    store.put("hi", "what",l1,{})
-    store.put("hi", "excuse me",l1,{})
-    store.put("excalibur", "excuse me",l1,{})
-    store.put("hello", "donatello",l2,{})
-    store.put("hello", "domingo",l2,{})
-    store.put("excalibur", "excaliwhat",l2,{})
+    l2.touch()
+    h2.unlink(missing_ok=True)
+    h2.touch()
+
+    _put_helper("hi", "what", l1, h1)
+    wal.wal_append(wal.package_kv("hello", "domingo",wal.offset(l1)),l1)
+    # wal.wal_append(wal.package_hint_kv("hello", wal.offset(h1)),h1)
+    wal.wal_append(wal.package_kv("hello","",package_type=1), l1)
+    _put_helper("hi", "excuse me", l1, h1)
+    _put_helper("excalibur", "excuse me",l1, h1)
+    _put_helper("hello", "donatello", l2, h2)
+    _put_helper("hello", "domingo", l2, h2)
+    _put_helper("excalibur", "excaliwhat",l2, h2)
 
     assert merged_kv(f1) == {"hi":"excuse me",
-                             "hello":"domingo",
+                             "hello": "domingo",
                              "excalibur":"excaliwhat"}
+
 def test_create_hint_file() -> None:
     d1 = test_dir / 'create_hint_file'
     d1.mkdir(exist_ok=True)
@@ -83,19 +108,22 @@ def test_create_hint_file() -> None:
 def test_create_log_and_hint() -> None:
     d1 = test_dir / 'create_log_and_hint'
     d1.mkdir(exist_ok=True)
+    a1 = d1 / "active.bin"
     l1 = d1 / 'new_file.bin'
-    h1 = d1 / 'new_file_hint.bin'
+    h1 = d1 / 'hnew_file.bin'
 
-    l1.unlink(missing_ok= True) #clearing past entries of new_file
-    h1.unlink(missing_ok= True) #clearing past entries of new_file_hint
+    a1.unlink(missing_ok= True)
+    a1.touch()
+    l1.unlink(missing_ok= True)
+    h1.unlink(missing_ok= True)
 
     k1 = {'hi': 'what'}
     tomb1 = {'hello':""}
-    hi1 = {'hi': '18'}
+    hi1 = {'hi': 37}
     assert create_log_and_hint(tomb1, k1, l1) is True
-    assert wal.compactWal({}, l1, "value") == k1
-    assert wal.compactWal({}, l1, "tombstones") == tomb1
-    assert wal.compactWal({}, h1, "value") == hi1
+    assert wal.create_hash({}, l1, "values") == k1
+    assert wal.create_tombstones({}, l1) == tomb1
+    assert wal.read_hint_file(h1) == hi1
 
 def test_remove_old_set_new() -> None:
     d1 = test_dir / 'remove_old_set_new'

@@ -17,11 +17,12 @@ def log_id(log:Path) -> int:
         log_id = match.group(1)
     return int(log_id)
 
-# Determine the deleted keys(tombstones) for a given set of files
+# Determine the deleted keys(tombstones) for a given set of sorted files
+# files should be in oldest to most recent order
 def tombstones(files:list[Path]) -> dict:
     tombstones:dict = {}
     for file in files:
-        tombstones = wal.compactWal(tombstones, file, "tombstones")
+        tombstones = wal.create_tombstones(tombstones, file)
     return tombstones
 
 # Determine the key value hash for a given set of files
@@ -29,14 +30,16 @@ def merged_kv(files:list[Path]) -> dict:
     merged_kv:dict = {}
 
     for file in files:
-        merged_kv = wal.compactWal(merged_kv, file, "value")
+        merged_kv = wal.create_hash(merged_kv, file, "values")
     return merged_kv
 
 # Create a hint file at the hint name of loc
 def create_hint_file(hints:dict[str,int], loc:Path) -> bool:
     for key, val in hints.items():
+        print(key,val)
         wal.wal_append(wal.package_hint_kv(key, val), hint_name(loc))
     return True
+
 
 # Create log and hint files for given dict of tombstones and key values
 # (tombstones placed at beginning)
@@ -44,10 +47,15 @@ def create_log_and_hint(tombstones:dict[str,str], merged_kv:dict, loc:Path) -> b
     hints:dict[str,int] = {}
 
     for tombstone_key, tombstone_value in tombstones.items():
-        store.remove(tombstone_key,loc,{})
+        wal.wal_append(
+            wal.package_kv(tombstone_key,"",package_type=1),
+            loc)
 
     for key, value in merged_kv.items():
-        store.put(key, value, loc, hints)
+        offset = wal.wal_append(
+            wal.package_kv(key,value,package_type=0),
+            loc)
+        hints[key] = offset
 
     create_hint_file(hints, loc)
 
