@@ -11,10 +11,9 @@ def test_recreate_hash() -> None:
     l1 = d1 / 'active.bin'
     l1.unlink(missing_ok=True)
     l1.touch()
-    dict1 = {}
+    dict1 = {"hi":0}
 
-    store.put("hi", "what", d1, dict1)
-    assert (dict1 == {"hi":0})
+    store.put_helper("hi", "what", l1)
     assert (recreate_hash(d1) == dict1)
 
 

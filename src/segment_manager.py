@@ -53,11 +53,12 @@ def create_log_and_hint(tombstones:dict[str,str], merged_kv:dict, loc:Path) -> b
             wal.package_kv(t_key,"",package_type=1),
             loc)
 
+    offset = 0
     for key, val in merged_kv.items():
+        hints[key] = offset
         offset = wal.wal_append(
             wal.package_kv(key,val,package_type=0),
             loc)
-        hints[key] = offset
 
     create_hint_file(hints, loc)
 
@@ -131,6 +132,15 @@ def tmp_name(files:list[Path]) -> Path:
     file = files[0]
     return file.parent / ("t" + file.parts[-1])
 
+# takes a list of files without hint files or "active" determines the oldest one
+def active_file_tmp_name(directory:Path) -> Path:
+    segments = get_segments(directory)
+    if not segments:
+        return directory / "1.bin"
+    else:
+        file = segments[0][0]
+        return file.parent / (str(log_id(file)+1) +".bin")
+
 # remove the files in the processed_files list
 # set the tmp file name to the new file name
 def remove_old_set_new(files:list[Path], new:Path, tmp:Path) -> bool:
@@ -149,6 +159,20 @@ def replace(to_replace:list[Path]) -> bool:
                                 merged_kv(to_replace),
                                 tmp)
             and remove_old_set_new(to_replace, new, tmp))
+
+# Compact the active file, and reset it
+def new_active_file(directory:Path) -> bool:
+    new = active_file_tmp_name(directory)
+    active = directory / "active.bin"
+    to_replace = [active]
+
+    create_log_and_hint(tombstones(to_replace),
+                                merged_kv(to_replace),
+                                new)
+    active.unlink()
+    active.touch()
+    return True
+
 
 # determines which files should be merged
 # returns a list of files without the hint files

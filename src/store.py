@@ -33,11 +33,14 @@ def put_helper(key:str, val:str, log:Path) -> bool:
     return True
 
 # Format and append key value pair to active file. Update in-memory hash
-def put(key:str, val:str, directory:Path, imh:dict[str,int]) -> bool:
+def put(key:str, val:str, directory:Path, imh:dict[str,int], c_thresh) -> bool:
     active = directory / "active.bin"
     offset = wal.offset(active)
     put_helper(key, val, active)
     myhash.update(key, offset, imh)
+    if offset >= c_thresh:
+        seg.new_active_file(directory)
+        imh.clear()
     return True
 
 
@@ -50,7 +53,7 @@ def remove(key:str, directory:Path,imh:dict[str,int]) -> str:
 
 
 # takes the action and splits the processing
-def process(directory:Path, in_memory_hash:dict, action:str, key:str, value:str="") -> str:
+def process(directory:Path, in_memory_hash:dict, action:str, key:str, value:str="", compaction_threshold=100) -> str:
     if action == "GET":
         res = fetch(key,directory,in_memory_hash)
         if res:
@@ -58,7 +61,7 @@ def process(directory:Path, in_memory_hash:dict, action:str, key:str, value:str=
         else:
             return "GET failed"
     elif action == "PUT":
-        if put(key,value,directory,in_memory_hash):
+        if put(key,value,directory,in_memory_hash, compaction_threshold):
             return "PUT succeeded"
         else:
             return "PUT failed"

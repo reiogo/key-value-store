@@ -140,9 +140,9 @@ def _build_helper(d1,a1,l1,h1) -> dict[str,int]:
     l1.touch()
     h1.unlink(missing_ok=True)
     h1.touch()
-    store.put("hi", "what",d1,imh)
-    store.put("hi", "excuse me",d1,imh)
-    store.put("excalibur", "excuse me",d1,imh)
+    store.put("hi", "what",d1,imh,100)
+    store.put("hi", "excuse me",d1,imh,100)
+    store.put("excalibur", "excuse me",d1,imh,100)
     store.remove("excalibur",d1,imh)
     _put_helper("hello", "donatello", l1, h1)
     _put_helper("cat", "truffle", l1, h1)
@@ -198,65 +198,6 @@ def test_create_tombstones() -> None:
     hsh = {}
     hsh = create_tombstones(hsh, l1)
     assert(hsh == {"hello": "" })
-
-
-# def test_compact_wal() -> None:
-#     d1 = test_dir / 'compact_wal'
-#     d1.mkdir(exist_ok=True)
-#     a1 = d1 / 'active.bin'
-
-#     dict1 = {'hi':38}
-#     dict2 = {'hi':'4'}
-#     dict4 = {'del':""}
-
-#     a1.unlink(missing_ok=True)
-#     assert store.process(d1,dict1,"PUT","hi", "8") == "PUT succeeded"
-#     assert store.process(d1,dict1,"PUT","hi", "7") == "PUT succeeded"
-#     assert store.process(d1,dict1,"PUT","hi", "4") == "PUT succeeded"
-#     assert store.process(d1,dict1,"DELETE","del", "") == "DELETE succeeded"
-#     assert compact_wal({},a1, "offset") == dict1
-#     assert compact_wal({},a1, "value") == dict2
-#     assert compact_wal({},a1, "tombstones") == dict4
-
-
-# def test_next_name() -> None:
-#     d1 = test_dir / 'next_name'
-#     d1.mkdir(exist_ok=True)
-#     l1 = d1 / '1.bin'
-#     l2 = d1 / '2.bin'
-#     l3 = d1 / '3.bin'
-#     l300 = d1 / '300.bin'
-#     l301 = d1 / '301.bin'
-
-#     h1 = d1 / 'h1.bin'
-#     h2 = d1 / 'h2.bin'
-#     h300 = d1 / 'h300.bin'
-
-#     assert next_name([(l1,h1),(l2,h2)]) == l3
-
-#     assert next_name([(l1,h1),(l2,h2),(l300,h300)]) == l301
-
-# def test_new_hint_name() -> None:
-#     d1 = test_dir / 'new_hint_name'
-#     d1.mkdir(exist_ok=True)
-#     l1 = d1 / '1.bin'
-#     h1 = d1 / 'h1.bin'
-
-#     assert new_hint_name(l1) == h1
-
-# def test_should_compact() -> None:
-#     d1 = test_dir / 'should_compact'
-#     d1.mkdir(exist_ok=True)
-
-#     l1 = d1 / '1.bin'
-#     l2 = d1 / '2.bin'
-
-#     h1 = d1 / 'h1.bin'
-#     h2 = Path('')
-
-#     f1 = [(l2, h2),(l1, h1)]
-#     f2 = [l2]
-#     assert should_compact(f1) == f2
 
 
 def test_package_hint_kv() -> None:

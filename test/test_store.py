@@ -37,6 +37,7 @@ def test_fetch() -> None:
     d1 = test_dir / 'fetch'
     d1.mkdir(exist_ok=True)
     a1 = d1 / 'active.bin'
+    a1.unlink()
     a1.touch()
     l1 = d1 / '1.bin'
     l1.touch()
@@ -44,7 +45,7 @@ def test_fetch() -> None:
     h1.touch()
 
     imh = {}
-    put("hi", "bye", d1, imh)
+    put("hi", "bye", d1, imh, 100)
     wal.wal_append(wal.package_kv("yellow", "submarine",0),l1)
     wal.wal_append(wal.package_hint_kv("yellow", 0),h1)
     assert(fetch("yellow",d1,imh) == "submarine")
@@ -58,12 +59,18 @@ def test_put() -> None:
     a1 = d1 / 'active.bin'
     a1.unlink(missing_ok=True)
     a1.touch()
+    l1 = d1 / '1.bin'
+    l1.unlink(missing_ok=True)
     imh = {}
 
-    put("hi", "bye", d1, imh)
+    put("tom", "cat", d1, imh, 0)
+    assert(imh == {})
+    assert(l1.exists())
+    assert(wal.read_wal(0,l1) == (True, 0, "tom", "cat", 19))
+    put("hi", "bye", d1, imh, 100)
     assert(imh == {"hi": 0})
     assert(wal.read_wal(0,a1) == (True, 0, "hi", "bye", 18))
-    put("hello", "bello", d1, imh)
+    put("hello", "bello", d1, imh, 100)
     assert(imh == {"hello": 18, "hi" : 0})
     assert(wal.read_wal(18,a1) == (True, 0, "hello", "bello", 41))
 

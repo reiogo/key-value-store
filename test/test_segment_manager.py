@@ -37,13 +37,15 @@ def test_tombstone() -> None:
 
     f1 = [l1,a1]
 
+    a1.unlink(missing_ok=True)
+    a1.touch()
     l1.unlink(missing_ok=True)
     l1.touch()
     h1.unlink(missing_ok=True)
     h1.touch()
-    store.put("hi", "what",d1,imh)
-    store.put("hi", "excuse me",d1,imh)
-    store.put("excalibur", "excuse me",d1,imh)
+    store.put("hi", "what",d1,imh,100)
+    store.put("hi", "excuse me",d1,imh,100)
+    store.put("excalibur", "excuse me",d1,imh,100)
     store.remove("excalibur",d1,imh)
     _put_helper("hello", "donatello", l1, h1)
     wal.wal_append(wal.package_kv("hello", "domingo",0),l1)
@@ -119,7 +121,7 @@ def test_create_log_and_hint() -> None:
 
     k1 = {'hi': 'what'}
     tomb1 = {'hello':""}
-    hi1 = {'hi': 37}
+    hi1 = {'hi': 0}
     assert create_log_and_hint(tomb1, k1, l1) is True
     assert wal.create_hash({}, l1, "values") == k1
     assert wal.create_tombstones({}, l1) == tomb1
@@ -229,21 +231,6 @@ def test_remove_seg_and_hint() -> None:
     assert not h2.exists()
     assert get_segments(d1) == [(l3,Path(""))]
 
-# def test_get_files() -> None:
-#     d1 = test_dir / 'get_files'
-#     d1.mkdir(exist_ok=True)
-#     l1 = d1 / '1.bin'
-#     l1.touch(exist_ok=True)
-#     l2 = d1 / '2.bin'
-#     l2.touch(exist_ok=True)
-#     h1 = d1 / 'h1.bin'
-#     h1.touch(exist_ok=True)
-#     a1 = d1 / 'active.bin'
-#     a1.touch(exist_ok=True)
-
-
-#     assert (get_files(d1) == [l1,l2,a1,h1])
-
 def test_get_segments() -> None:
     d1 = test_dir / 'get_segments'
     d1.mkdir(exist_ok=True)
@@ -280,22 +267,6 @@ def test_segment_iter() -> None:
     assert(segment_iter(d1, l17) == l3)
     assert(segment_iter(d1, a1) == l17)
 
-# def test_get_hashmap() -> None:
-#     d1 = test_dir / 'get_hashmap'
-#     d1.mkdir(exist_ok=True)
-#     a1 = d1 / 'active.bin'
-#     a1.touch()
-#     l1 = d1 / '1.bin'
-#     l1.touch()
-#     h1 = d1 / 'h1.bin'
-#     h1.touch()
-
-#     hashmap1 = {"yellow":0}
-#     wal.wal_append(wal.package_kv("yellow", "submarine",0),l1)
-#     # make hintfile
-#     assert(get_hashmap(l1))
-
-
 def test_tmp_name() -> None:
     d1 = test_dir / 'tmp_name'
     l1 = d1 / '1.bin'
@@ -309,6 +280,24 @@ def test_tmp_name() -> None:
     assert tmp_name([l1,l2]) == t1
     assert tmp_name([l2,l300]) == t2
 
+def test_active_file_tmp_name() -> None:
+    d1 = test_dir / 'active_file_tmp_name'
+    d1.mkdir(exist_ok=True)
+    a1 = d1 / 'active.bin'
+    a1.touch(exist_ok=True)
+    l1 = d1 / '1.bin'
+    l1.touch(exist_ok=True)
+    l2 = d1 / '2.bin'
+    l2.touch(exist_ok=True)
+    l3 = d1 / '3.bin'
+    l3.touch(exist_ok=True)
+    l300 = d1 / '300.bin'
+    l300.touch(exist_ok=True)
+    l301 = d1 / '301.bin'
+    l301.touch(exist_ok=True)
+    t1 = d1 / '302.bin'
+
+    assert active_file_tmp_name(d1) == t1
 
 def test_name_funcs() -> None:
     d1 = test_dir / 'hint_name'
@@ -322,3 +311,23 @@ def test_name_funcs() -> None:
     assert hint_name(l300) == h300
     assert remove_t(t1) == l1
 
+def test_new_active_file() -> None:
+    d1 = test_dir / 'new_active_file'
+    d1.mkdir(exist_ok=True)
+    for child in d1.iterdir():
+        child.unlink(missing_ok=True)
+    a1 = d1 / 'active.bin'
+    a1.touch()
+    l1 = d1 / '1.bin'
+    h1 = d1 / 'h1.bin'
+    imh = {}
+    store.put("hi", "bye", d1, imh, 100)
+    new_active_file(d1)
+    assert(l1.exists())
+    assert(h1.exists())
+    assert(wal.read_wal(0,l1) == (True, 0, "hi", "bye", 18))
+    assert(wal.read_hint_file(h1) == imh)
+    assert(a1.exists())
+    assert(wal.read_wal(0,a1) == (True, 0, "", "", 13))
+
+    pass
