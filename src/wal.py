@@ -3,111 +3,48 @@ import os
 import zlib
 import src.my_hash as myhash
 import re
-def name_matches_hint(log:Path, hint:Path):
-    log_parts = log.parts
-    hint_parts = hint.parts
-    return "h"+log_parts[-1] == hint_parts[-1]
+import src.segment_manager as seg
 
-def next_name(all_logs:list[tuple[Path,Path]],not_this:list[Path]=[]) -> Path:
-    i = len(all_logs) - 1
-    top = all_logs[i][0]
-    while i > -1 and top in not_this:
-        i -= 1
-        top = all_logs[i][0]
-
-    top_log_parts = top.parts
-    name = top_log_parts[-1]
-    match = re.search(r"([0-9]*)\.bin",name)
-    log_id = '0'
-    if match:
-        log_id = match.group(1)
-    new_id = str(int(log_id) + 1)
-    new_name = new_id + ".bin"
-    return top.parent / new_name
-
-def new_hint_name(log:Path) -> Path:
-    log_parts = log.parts
-    name = log_parts[-1]
-    hint_name = "h" + name
-    return log.parent / hint_name
-
-
-def remove_from_wal(logs_to_remove:list[Path], all_logs:list[tuple[Path,Path]]) -> list[tuple[Path,Path]]:
-    updated_logs = []
-    for file, hint in all_logs:
-        if file not in logs_to_remove:
-            updated_logs.append((file,hint))
-        else:
-            file.unlink()
-            if hint in logs_to_remove:
-                hint.unlink()
-    return updated_logs
-
-def should_compact(files:list[tuple[Path,Path]]) -> list[Path]:
-    res = []
-    for file, hint_file in files:
-        if hint_file == Path(""):
-            res.append(file)
-    return res
-
-def should_merge(files:list[tuple[Path,Path]], threshold) -> list[Path]:
-    res = []
-    total_size = 0
-    for file, hint_file in files:
-        total_size += file.stat().st_size
-        if total_size > threshold:
-            break
-        res.append(file)
-    return res
-
-def get_logs(directory:Path)->list[tuple[Path,Path]]:
-    res:list[tuple[Path,Path]] = []
-    logs = []
-    hints = []
-    for child in directory.iterdir():
-        name = child.parts[-1]
-        if name == "active.bin":
-            continue
-        if name[0] == 'h':
-            hints.append(child)
-        else:
-            logs.append(child)
-
-    for log in logs:
-        has_hint = False
-        for hint in hints:
-            if name_matches_hint(log,hint):
-                res.append((log,hint))
-                has_hint = True
-        if not has_hint:
-            res.append((log,Path("")))
-
-    res.sort()
-    return res
-
-def compactWal(given_hash:dict, storage:Path, value_flag) -> dict:
+# Compute hash from a given log file
+# package_type ={ 0 is append, 1 is delete}
+# val_type is "offsets" or "values"
+def create_hash(hsh:dict, log:Path, val_type) -> dict:
     check_passed = True
     offset = 0
     try:
-        while offset != storage.stat().st_size and check_passed:
-            check_passed,package_type,key,value,next_offset = read_wal(offset,storage)
-            if package_type == 0 and value_flag != "tombstones":
-                if value_flag == "offset":
-                    given_hash[key] = offset
-                elif value_flag == "value":
-                    given_hash[key] = value
-                elif value_flag == "value_as_int":
-                    given_hash[key] = int(value)
+        while offset != log.stat().st_size and check_passed:
+            check_passed,package_type,key,value,next_offset = read_wal(offset,log)
+            if package_type == 0:
+                if val_type == "offsets":
+                    hsh[key] = offset
+                elif val_type == "values":
+                    hsh[key] = value
             elif package_type == 1:
-                myhash.delete(key, given_hash)
-                if value_flag == "tombstones":
-                    given_hash[key] = ""
+                myhash.delete(key, hsh)
             offset = next_offset
 
     except Exception as e:
         print(f"Error: {e}")
-    return given_hash
+    return hsh
 
+# Compute dictionary of tombstoned values for a given log
+def create_tombstones(hsh:dict, log:Path) -> dict:
+    check_passed = True
+    offset = 0
+    try:
+        while offset != log.stat().st_size and check_passed:
+            check_passed,package_type,key,value,next_offset = read_wal(offset,log)
+            if package_type == 0 and key in hsh:
+                myhash.delete(key,hsh)
+            if package_type == 1:
+                hsh[key] = ""
+            offset = next_offset
+
+    except Exception as e:
+        print(f"Error: {e}")
+    return hsh
+
+# Compute size of file, which is the offset
 def offset(storage:Path) -> int:
     try:
         with storage.open("ab") as file:
@@ -115,6 +52,7 @@ def offset(storage:Path) -> int:
     except OSError as e:
         raise RuntimeError(f"Getting offset failed. Path: {storage}") from e
 
+# Compute the byte string for a given key/value pair
 def package_kv(key:str,value:str="",package_type:int=0) -> bytes:
     package_type_byte = package_type.to_bytes(1,"big")
 
@@ -131,11 +69,50 @@ def package_kv(key:str,value:str="",package_type:int=0) -> bytes:
 
     return package + checksum
 
-def wal_append(word:bytes, storage:Path) -> bool:
+# Compute byte representation of a hint key/value pair
+def package_hint_kv(key:str, val:int) -> bytes:
+    s_val = str(val)
+    key_bytes = key.encode("utf-8")
+    value_bytes = s_val.encode("utf-8")
+
+    return (len(key_bytes).to_bytes(4,"big")
+            + key_bytes
+            + len(value_bytes).to_bytes(4,"big")
+            + value_bytes)
+
+# Read given hint file
+# Close file when val is an empty string.
+def read_hint_file(hint:Path) -> dict[str,int]:
+    try:
+        hashmap = {}
+        with hint.open("rb") as file:
+            while True:
+                klen_raw = file.read(4)
+                klen = int.from_bytes(klen_raw, byteorder="big")
+                k_raw = file.read(klen)
+                key = k_raw.decode("utf-8")
+
+                vlen_raw = file.read(4)
+                vlen = int.from_bytes(vlen_raw, byteorder="big")
+                v_raw = file.read(vlen)
+                value = v_raw.decode("utf-8")
+                if value == "":
+                    break
+                hashmap[key] = int(value)
+        return hashmap
+    except OSError as e:
+        raise RuntimeError(f"Function: read_hint_file failed. Path: {hint}") from e
+
+
+
+# Add bytes to a given file
+# Return offset
+def wal_append(word:bytes, storage:Path) -> int:
+    storage.touch(exist_ok=True)
     try:
         with storage.open("ab") as f:
             f.write(word)
-            return True
+            return f.tell()
     except OSError as e:
         raise RuntimeError(f"Wal append failed. Path: {storage}") from e
 
@@ -144,6 +121,7 @@ def read(offset:int, storage:Path) -> str:
     check_passed,package_type,key,value,offset = read_wal(offset, storage)
     return value
 
+# Read all information about the key/value data from a given offset
 def read_wal(offset:int, storage:Path) -> tuple[bool,int,str,str,int]:
     try:
         with storage.open("rb") as file:

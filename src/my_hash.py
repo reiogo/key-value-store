@@ -1,8 +1,8 @@
 from pathlib import Path
 import src.wal as wal
 
-def recreate_hash(storage:Path) -> dict:
-    return wal.compactWal({}, storage / "active.bin", "offset")
+def recreate_hash(directory:Path) -> dict:
+    return wal.create_hash({}, directory / "active.bin", "offsets")
 
 def get_offset(key:str, h:dict[str,int]) -> int:
     return h.get(key, -1)

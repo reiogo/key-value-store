@@ -6,6 +6,9 @@ import src.store as store
 from pathlib import Path
 import time
 
+test_dir = Path('/usr/key-value/test/test_storage/wal')
+test_dir.mkdir(parents=True, exist_ok=True)
+
 def setup_test_log(l1:Path, h:dict):
     l1.unlink(missing_ok=True)
     # for key,value in h.items():
@@ -36,13 +39,16 @@ def setup_test_log(l1:Path, h:dict):
     o2 = offset(l1)
     # print(o2)
 
-    assert wal_append(p1, l1) is True
-    assert wal_append(p2, l1) is True
+    assert wal_append(p1, l1) == os.path.getsize(l1)
+    assert wal_append(p2, l1) == os.path.getsize(l1)
 
 
 def test_offset() -> None:
-    test_log = Path('/usr/key-value/test/test_storage/test_wal.bin')
-    assert offset(test_log) == os.path.getsize(test_log)
+    d1 = test_dir / 'offset'
+    d1.mkdir(exist_ok=True)
+    l1 = d1 / '1.bin'
+
+    assert offset(l1) == os.path.getsize(l1)
 
     k1 = "hi"
     v1 = "whats"
@@ -54,11 +60,14 @@ def test_offset() -> None:
     c1 = zlib.crc32(w1)
     p1 = (w1 + c1.to_bytes(4,"big"))
 
-    assert wal_append(p1, test_log) is True
-    assert offset(test_log) == os.path.getsize(test_log)
+    assert wal_append(p1, l1) == os.path.getsize(l1)
+    assert offset(l1) == os.path.getsize(l1)
 
 def test_wal_append() -> None:
-    test_log = Path('/usr/key-value/test/test_storage/test_wal.bin')
+    d1 = test_dir / 'wal_append'
+    d1.mkdir(exist_ok=True)
+    l1 = d1 / '1.bin'
+
     k1 = "hi"
     v1 = "whats"
 
@@ -69,23 +78,26 @@ def test_wal_append() -> None:
           + v1.encode("utf-8"))
     c1 = zlib.crc32(w1)
     p1 = (w1 + c1.to_bytes(4,"big"))
-    o1 = offset(test_log)
+    o1 = offset(l1)
 
-    assert wal_append(p1, test_log) is True
-    assert read(o1, test_log) == v1
+    assert wal_append(p1, l1) == os.path.getsize(l1)
+    assert read(o1, l1) == v1
 
 def test_read_wal() -> None:
-    test_log = Path('/usr/key-value/test/test_storage/test_wal.bin')
-    setup_test_log(test_log, {"hi":"whats", "hello":"why"})
+    d1 = test_dir / 'read_wal'
+    d1.mkdir(exist_ok=True)
+    l1 = d1 / '1.bin'
+
+    setup_test_log(l1, {"hi":"whats", "hello":"why"})
     o1 = 0
-    c1,p1,k1,v1,o2 = read_wal(o1, test_log)
+    c1,p1,k1,v1,o2 = read_wal(o1, l1)
     assert c1 == True
     assert p1 == 0
     assert k1 == "hi"
     assert v1 == "whats"
     assert o2 == 20
 
-    c2,p2,k2,v2,o3 = read_wal(o2, test_log)
+    c2,p2,k2,v2,o3 = read_wal(o2, l1)
     assert c2 == True
     assert p2 == 0
     assert k2 == "secondkey"
@@ -115,103 +127,105 @@ def test_package_kv_delete() -> None:
     checksum = zlib.crc32(p1).to_bytes(4,"big")
     assert package_kv(k1,v1,True) == p1 + checksum
 
-def test_compact_wal() -> None:
-    dir1 = Path('/usr/key-value/test/test_storage/test_wal')
-    l1 = Path('/usr/key-value/test/test_storage/test_wal/active.bin')
-    d1 = {'hi':38}
-    d2 = {'hi':'4'}
-    d3 = {'hi':4}
-    d4 = {'del':""}
+def _put_helper(key, val, l1, h1):
+    wal_append(package_kv(key, val),l1)
+    wal_append(package_hint_kv(key, offset(h1)),h1)
 
+def _build_helper(d1,a1,l1,h1) -> dict[str,int]:
+    imh = {}
+
+    a1.unlink(missing_ok=True)
+    a1.touch()
     l1.unlink(missing_ok=True)
-    assert store.process(dir1,d1,"PUT","hi", "8") == "PUT succeeded"
-    assert store.process(dir1,d1,"PUT","hi", "7") == "PUT succeeded"
-    assert store.process(dir1,d1,"PUT","hi", "4") == "PUT succeeded"
-    assert store.process(dir1,d1,"DELETE","del", "") == "DELETE succeeded"
-    assert compactWal({},l1, "offset") == d1
-    assert compactWal({},l1, "value") == d2
-    assert compactWal({},l1, "value_as_int") == d3
-    assert compactWal({},l1, "tombstones") == d4
-
-def test_name_matches_hint() -> None:
-    test_log = Path('/usr/key-value/test/test_storage/test_compaction/')
-    test_hint = Path('/usr/key-value/test/test_storage/htest_compaction/')
-    assert name_matches_hint(test_log, test_hint) is True
-
-def test_next_name() -> None:
-    l1 = Path('/usr/key-value/test/test_storage/1.bin')
-    h1 = Path('/usr/key-value/test/test_storage/h1.bin')
-    l2 = Path('/usr/key-value/test/test_storage/2.bin')
-    h2 = Path('/usr/key-value/test/test_storage/h2.bin')
-    next_log1 = Path('/usr/key-value/test/test_storage/3.bin')
-
-    assert next_name([(l1,h1),(l2,h2)]) == next_log1
-
-    l3 = Path('/usr/key-value/test/test_storage/300.bin')
-    h3 = Path('/usr/key-value/test/test_storage/h300.bin')
-    next_log2 = Path('/usr/key-value/test/test_storage/301.bin')
-    assert next_name([(l1,h1),(l2,h2),(l3,h3)]) == next_log2
-
-def test_new_hint_name() -> None:
-    test_log = Path('/usr/key-value/test/test_storage/1.bin')
-    test_hint = Path('/usr/key-value/test/test_storage/h1.bin')
-    assert new_hint_name(test_log) ==  test_hint
-
-def test_remove_from_wal() -> None:
-    l1 = Path('/usr/key-value/test/test_storage/test_remove_from_wal/1.bin')
     l1.touch()
-    h1 = Path('/usr/key-value/test/test_storage/test_remove_from_wal/h1.bin')
+    h1.unlink(missing_ok=True)
     h1.touch()
-    l2 = Path('/usr/key-value/test/test_storage/test_remove_from_wal/2.bin')
-    l2.touch()
-    h2 = Path('/usr/key-value/test/test_storage/test_remove_from_wal/h2.bin')
-    h2.touch()
-    l3 = Path('/usr/key-value/test/test_storage/test_remove_from_wal/3.bin')
-    l3.touch()
-    h3 = Path('/usr/key-value/test/test_storage/test_remove_from_wal/h3.bin')
-    h3.touch()
-    assert remove_from_wal([l1,h1,l2,h2],[(l1,h1),(l2,h2),(l3,h3)]) == [(l3,h3)]
-    assert not l1.exists()
-    assert not h1.exists()
-    assert not l2.exists()
-    assert not h2.exists()
-    assert l3.exists()
-    assert h3.exists()
-    l3.unlink()
-    h3.unlink()
+    store.put("hi", "what",d1,imh,100)
+    store.put("hi", "excuse me",d1,imh,100)
+    store.put("excalibur", "excuse me",d1,imh,100)
+    store.remove("excalibur",d1,imh)
+    _put_helper("hello", "donatello", l1, h1)
+    _put_helper("cat", "truffle", l1, h1)
+    wal_append(package_kv("hello", "domingo",0),l1)
+    # wal_append(package_hint_kv("hello", 14),h1)
+    wal_append(package_kv("hello","",package_type=1), l1)
+    wal_append(package_kv("cat", "flamingo",0),l1)
+    # wal_append(package_hint_kv("hello", 14),h1)
+    wal_append(package_kv("cat","",package_type=1), l1)
+    _put_helper("cat", "truffle2", l1, h1)
+    _put_helper("excalibur", "excaliwhat", l1, h1)
+    _put_helper("excalibur", "dolma", l1, h1)
+    _put_helper("dancing", "tiger", l1, h1)
+    return imh
+
+def test_create_hash() -> None:
+    d1 = test_dir / 'create_hash'
+    d1.mkdir(exist_ok=True)
+    a1 = d1 / 'active.bin'
+    l1 = d1 / '1.bin'
+    h1 = d1 / 'h1.bin'
+    _build_helper(d1,a1,l1,h1)
+    hsh_offsets = {}
+    hsh_offsets = create_hash(hsh_offsets,l1, "offsets")
+    assert(hsh_offsets == {
+        "cat":133,
+        "excalibur":189,
+        "dancing":216})
+    hsh_offsets = create_hash(hsh_offsets,a1, "offsets")
+    assert(hsh_offsets == {"hi":19,
+                   "dancing": 216 ,
+                   "cat":133})
+
+    hsh_values = {}
+    hsh_values = create_hash(hsh_values,l1, "values")
+    assert(hsh_values == {
+        "cat":"truffle2",
+        "excalibur":"dolma",
+        "dancing":"tiger"})
+    hsh_values = create_hash(hsh_values,a1, "values")
+    assert(hsh_values == {"hi":"excuse me",
+                   "dancing": "tiger" ,
+                   "cat":"truffle2"})
 
 
-def test_should_compact() -> None:
-    l1 = Path('/usr/key-value/test/test_storage/get_logs/1.bin')
-    h1 = Path('/usr/key-value/test/test_storage/get_logs/h1.bin')
-    l2 = Path('/usr/key-value/test/test_storage/get_logs/2.bin')
-    h2 = Path('')
-
-    f1 = [(l2, h2),(l1, h1)]
-    f2 = [l2]
-    assert should_compact(f1) == f2
-
-def test_should_merge() -> None:
-    l1 = Path('/usr/key-value/test/test_storage/get_logs/1.bin')
-    h1 = Path('/usr/key-value/test/test_storage/get_logs/h1.bin')
-    l2 = Path('/usr/key-value/test/test_storage/get_logs/2.bin')
-    h2 = Path('')
-    thresh = 200
-
-    f1 = [(l2, h2),(l1, h1)]
-    f2 = [l2,l1]
-    assert should_merge(f1,thresh) == f2
+def test_create_tombstones() -> None:
+    d1 = test_dir / 'create_tombstones'
+    d1.mkdir(exist_ok=True)
+    a1 = d1 / 'active.bin'
+    l1 = d1 / '1.bin'
+    h1 = d1 / 'h1.bin'
+    _build_helper(d1,a1,l1,h1)
+    hsh = {}
+    hsh = create_tombstones(hsh, l1)
+    assert(hsh == {"hello": "" })
 
 
-def test_get_logs() -> None:
-    d1 = Path('/usr/key-value/test/test_storage/get_logs')
-    l1 = Path('/usr/key-value/test/test_storage/get_logs/1.bin')
-    h1 = Path('/usr/key-value/test/test_storage/get_logs/h1.bin')
-    l2 = Path('/usr/key-value/test/test_storage/get_logs/2.bin')
-    h2 = Path('')
-    a1 = Path('/usr/key-value/test/test_storage/active.bin')
+def test_package_hint_kv() -> None:
+    k1 = "hi"
+    v1 = "0"
+    b1 = (len(k1.encode("utf-8")).to_bytes(4, "big")
+          + k1.encode("utf-8")
+          + len(v1.encode("utf-8")).to_bytes(4, "big")
+          + v1.encode("utf-8"))
 
-    get_logs(d1) == [(l2,h2),(l1,h1)]
+    assert (package_hint_kv("hi", 0) == b1)
+
+def test_read_hint_file() -> None:
+    d1 = test_dir / 'read_hint_file'
+    d1.mkdir(exist_ok=True)
+    h1 = d1 / 'h1.bin'
+    h1.unlink(missing_ok=True)
+    h1.touch()
+
+    hashmap = {"hi": 0}
+    wal_append(package_hint_kv("hi", 0), h1)
+    assert(read_hint_file(h1) == hashmap)
+    hashmap = {"hi": 0, "hi2": 11}
+    wal_append(package_hint_kv("hi2", 11), h1)
+    assert(read_hint_file(h1) == hashmap)
+
+
+
 
 
 

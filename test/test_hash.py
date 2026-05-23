@@ -2,15 +2,19 @@ from src.my_hash import *
 import src.store as store
 import pytest
 
-def test_recreate_hash() -> None:
-    dir1 = Path('/usr/key-value/test/test_storage/recreate_hash/')
-    test_log = Path('/usr/key-value/test/test_storage/recreate_hash/active.bin')
-    test_log.unlink(missing_ok=True)
-    test_log.touch()
-    d1 = {'hi':0}
+test_dir = Path('/usr/key-value/test/test_storage/hash')
+test_dir.mkdir(parents=True, exist_ok=True)
 
-    store.process_put("hi", "what", test_log,{})
-    assert recreate_hash(dir1) == d1
+def test_recreate_hash() -> None:
+    d1 = test_dir / 'recreate_hash'
+    d1.mkdir(exist_ok=True)
+    l1 = d1 / 'active.bin'
+    l1.unlink(missing_ok=True)
+    l1.touch()
+    dict1 = {"hi":0}
+
+    store.put_helper("hi", "what", l1)
+    assert (recreate_hash(d1) == dict1)
 
 
 def test_get_offset() -> None:
