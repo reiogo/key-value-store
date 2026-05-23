@@ -68,3 +68,16 @@ def test_put() -> None:
     assert(wal.read_wal(18,a1) == (True, 0, "hello", "bello", 41))
 
 
+def test_put_helper() -> None:
+    d1 = test_dir / 'put_helper'
+    d1.mkdir(exist_ok=True)
+    l1 = d1 / '1.bin'
+    l1.unlink(missing_ok=True)
+    l1.touch()
+
+    put_helper("hi", "bye", l1)
+    assert(wal.read_wal(0,l1) == (True, 0, "hi", "bye", 18))
+    put_helper("hello", "bello", l1)
+    assert(wal.read_wal(18,l1) == (True, 0, "hello", "bello", 41))
+
+

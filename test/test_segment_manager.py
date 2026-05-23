@@ -157,15 +157,57 @@ def test_remove_old_set_new() -> None:
     assert l3.exists()
     assert h3.exists()
 
+def test_should_merge() -> None:
+    d1 = test_dir / 'should_merge'
+    d1.mkdir(exist_ok=True)
+    l1 = d1 / '1.bin'
+    l1.touch()
+    l2 = d1 / '2.bin'
+    l2.touch()
+    h1 = d1 / 'h1.bin'
+    h1.touch()
+    h2 = Path('')
+
+    thresh = 200
+
+    f1 = [(l2, h2),(l1, h1)]
+    f2 = [l1,l2]
+    assert should_merge(f1,thresh) == f2
+
 def  test_replace():
     d1 = test_dir / 'replace'
     d1.mkdir(exist_ok=True)
+    a1 = d1 / 'active.bin'
+    a1.touch()
     l1 = d1 / '1.bin'
+    l1.unlink(missing_ok=True)
+    l1.touch()
     l2 = d1 / '2.bin'
+    l2.unlink(missing_ok=True)
+    l2.touch()
+
+    h1 = d1 / 'h1.bin'
+    h1.unlink(missing_ok=True)
+    h1.touch()
+    h2 = d1 / 'h2.bin'
+    h2.unlink(missing_ok=True)
+    h2.touch()
+    store.put_helper("hello", "bye",l1)
+    store.put_helper("next", "response1",l1)
+    store.put_helper("hello", "bye2", l2)
+    store.put_helper("third", "entry3", l2)
+
+    to_replace = [l1,l2]
+    replace(to_replace)
+    assert (l1.exists())
+    assert (not l2.exists())
+    assert(wal.read_wal(0,l1) == (True, 0, "hello", "bye2", 22))
+    assert(wal.read_wal(22,l1) == (True, 0, "next", "response1", 48))
+    assert(wal.read_wal(48,l1) == (True, 0, "third", "entry3", 72))
 
 
-def test_remove() -> None:
-    d1 = test_dir / 'remove'
+def test_remove_seg_and_hint() -> None:
+    d1 = test_dir / 'remove_seg_and_hint'
     d1.mkdir(exist_ok=True)
 
     l1 = d1 / '1.bin'
@@ -180,7 +222,7 @@ def test_remove() -> None:
     h2 = d1 / 'h2.bin'
     h2.touch(exist_ok=True)
 
-    remove([l1,h1,l2,h2])
+    remove_seg_and_hint([l1,l2])
     assert not l1.exists()
     assert not l2.exists()
     assert not h1.exists()

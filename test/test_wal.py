@@ -258,22 +258,6 @@ def test_create_tombstones() -> None:
 #     f2 = [l2]
 #     assert should_compact(f1) == f2
 
-def test_should_merge() -> None:
-    d1 = test_dir / 'should_merge'
-    d1.mkdir(exist_ok=True)
-    l1 = d1 / '1.bin'
-    l1.touch()
-    l2 = d1 / '2.bin'
-    l2.touch()
-    h1 = d1 / 'h1.bin'
-    h1.touch()
-    h2 = Path('')
-
-    thresh = 200
-
-    f1 = [(l1, h1),(l2, h2)]
-    f2 = [l2,l1]
-    assert should_merge(f1,thresh) == f2
 
 def test_package_hint_kv() -> None:
     k1 = "hi"

@@ -7,6 +7,7 @@ from pathlib import Path
 HOST = ''
 PORT = 50007
 STORAGE = Path('/usr/key-value/storage/')
+STORAGE.mkdir(parents=True, exist_ok=True)
 initial_log = STORAGE / "active.bin"
 initial_log.touch(exist_ok=True)
 inMemoryHash = recreate_hash(STORAGE)

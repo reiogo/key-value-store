@@ -26,6 +26,7 @@ def tombstones(files:list[Path]) -> dict:
     return tombstones
 
 # Determine the key value hash for a given set of files
+# files should be in oldest to most recent order
 def merged_kv(files:list[Path]) -> dict:
     merged_kv:dict = {}
 
@@ -35,9 +36,10 @@ def merged_kv(files:list[Path]) -> dict:
 
 # Create a hint file at the hint name of loc
 def create_hint_file(hints:dict[str,int], loc:Path) -> bool:
+    hint = hint_name(loc)
+    hint.touch(exist_ok=True)
     for key, val in hints.items():
-        print(key,val)
-        wal.wal_append(wal.package_hint_kv(key, val), hint_name(loc))
+        wal.wal_append(wal.package_hint_kv(key, val), hint)
     return True
 
 
@@ -45,15 +47,15 @@ def create_hint_file(hints:dict[str,int], loc:Path) -> bool:
 # (tombstones placed at beginning)
 def create_log_and_hint(tombstones:dict[str,str], merged_kv:dict, loc:Path) -> bool:
     hints:dict[str,int] = {}
-
-    for tombstone_key, tombstone_value in tombstones.items():
+    loc.touch(exist_ok=True)
+    for t_key, t_val in tombstones.items():
         wal.wal_append(
-            wal.package_kv(tombstone_key,"",package_type=1),
+            wal.package_kv(t_key,"",package_type=1),
             loc)
 
-    for key, value in merged_kv.items():
+    for key, val in merged_kv.items():
         offset = wal.wal_append(
-            wal.package_kv(key,value,package_type=0),
+            wal.package_kv(key,val,package_type=0),
             loc)
         hints[key] = offset
 
@@ -62,13 +64,12 @@ def create_log_and_hint(tombstones:dict[str,str], merged_kv:dict, loc:Path) -> b
     return True
 
 # swap Path names
-def swap_names(new:Path,old:Path) -> bool:
-    p = Path(new)
-    p.rename(Path(old))
+def swap_names(old:Path,new:Path) -> bool:
+    old.rename(new)
     return True
 
 # removes segments and their hint files from the directory
-def remove(segments:list[Path]) -> bool:
+def remove_seg_and_hint(segments:list[Path]) -> bool:
     for file in segments:
         file.unlink(missing_ok=True)
         hint_name(file).unlink(missing_ok=True)
@@ -132,21 +133,37 @@ def tmp_name(files:list[Path]) -> Path:
 
 # remove the files in the processed_files list
 # set the tmp file name to the new file name
-def remove_old_set_new(files:list[Path], new_name:Path, tmp_name:Path) -> bool:
-    remove(files)
-    swap_names(tmp_name, new_name)
-    swap_names(hint_name(tmp_name), hint_name(new_name))
+def remove_old_set_new(files:list[Path], new:Path, tmp:Path) -> bool:
+    remove_seg_and_hint(files)
+    swap_names(tmp, new)
+    swap_names(hint_name(tmp), hint_name(new))
     return True
 
-# create new log, remove old logs
-def replace(logs:list[Path]) -> bool:
-    tmp_name = tmp_name(logs)
-    new_name = remove_t(tmp_name)
+# create new log, remove sorted list of logs 
+# input: files in oldest to newest
+def replace(to_replace:list[Path]) -> bool:
+    tmp = tmp_name(to_replace)
+    new = remove_t(tmp)
 
-    return (create_log_and_hint(tombstones(logs),
-                                merged_kv(logs),
-                                tmp_name)
-            and remove_old_set_new(logs,new_name,tmp_name))
+    return (create_log_and_hint(tombstones(to_replace),
+                                merged_kv(to_replace),
+                                tmp)
+            and remove_old_set_new(to_replace, new, tmp))
+
+# determines which files should be merged
+# returns a list of files without the hint files
+# input is sorted from newest to oldest
+# output is sorted from oldest to newest
+def should_merge(files:list[tuple[Path,Path]], threshold) -> list[Path]:
+    files.reverse()
+    res = []
+    total_size = 0
+    for file, hint_file in files:
+        total_size += file.stat().st_size
+        if total_size > threshold:
+            break
+        res.append(file)
+    return res
 
 
 # controller to execute background merge and compact functions
@@ -155,7 +172,9 @@ def compact_and_merge(every_x_sec:float, directory, threshold) -> bool:
     start_time = time.monotonic()
     counter = 0
     while True:
-        replace(wal.should_merge(get_segments(directory),threshold))
+        replace(should_merge(get_segments(directory),threshold))
+
+        # calculate how often to merge
         time.sleep(every_x_sec - ((time.monotonic() - start_time) % every_x_sec))
 
     return False

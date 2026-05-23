@@ -5,31 +5,6 @@ import src.my_hash as myhash
 import re
 import src.segment_manager as seg
 
-# gets the files from the storage directory
-def get_logs(directory:Path)->list[tuple[Path,Path]]:
-    res:list[tuple[Path,Path]] = []
-    logs = []
-    hints = []
-    for child in directory.iterdir():
-        name = child.parts[-1]
-        if name == "active.bin":
-            continue
-        if name[0] == 'h':
-            hints.append(child)
-        else:
-            logs.append(child)
-
-    for log in logs:
-        has_hint = False
-        for hint in hints:
-            if seg.name_matches_hint(log,hint):
-                res.append((log,hint))
-                has_hint = True
-        if not has_hint:
-            res.append((log,Path("")))
-
-    res.sort()
-    return res
 
 # def next_name(all_logs:list[tuple[Path,Path]],not_this:list[Path]=[]) -> Path:
 #     i = len(all_logs) - 1
@@ -63,18 +38,18 @@ def get_logs(directory:Path)->list[tuple[Path,Path]]:
 #             res.append(file)
 #     return res
 
-# determines which files should be merged
-# returns a list of files without the hint files
-def should_merge(files:list[tuple[Path,Path]], threshold) -> list[Path]:
-    files.reverse()
-    res = []
-    total_size = 0
-    for file, hint_file in files:
-        total_size += file.stat().st_size
-        if total_size > threshold:
-            break
-        res.append(file)
-    return res
+# # determines which files should be merged
+# # returns a list of files without the hint files
+# def should_merge(files:list[tuple[Path,Path]], threshold) -> list[Path]:
+#     files.reverse()
+#     res = []
+#     total_size = 0
+#     for file, hint_file in files:
+#         total_size += file.stat().st_size
+#         if total_size > threshold:
+#             break
+#         res.append(file)
+#     return res
 
 
 # # Compact a given log file
@@ -206,6 +181,7 @@ def read_hint_file(hint:Path) -> dict[str,int]:
 # Add bytes to a given file
 # Return offset
 def wal_append(word:bytes, storage:Path) -> int:
+    storage.touch(exist_ok=True)
     try:
         with storage.open("ab") as f:
             f.write(word)
