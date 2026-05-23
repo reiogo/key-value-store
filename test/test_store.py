@@ -74,6 +74,23 @@ def test_put() -> None:
     assert(imh == {"hello": 18, "hi" : 0})
     assert(wal.read_wal(18,a1) == (True, 0, "hello", "bello", 41))
 
+def test_remove() -> None:
+    d1 = test_dir / 'remove'
+    d1.mkdir(exist_ok=True)
+    a1 = d1 / 'active.bin'
+    a1.unlink(missing_ok=True)
+    a1.touch()
+    l1 = d1 / '1.bin'
+    l1.unlink(missing_ok=True)
+    h1 = d1 / 'h1.bin'
+    imh = {}
+
+    put("hi", "bye", d1, imh, 100)
+    put("hello", "bello", d1, imh, 100)
+    remove("hello", d1, imh)
+    assert(wal.read_wal(41,a1) == (True, 1, "hello", "", 59))
+    assert(imh == {"hi":0})
+
 
 def test_put_helper() -> None:
     d1 = test_dir / 'put_helper'
