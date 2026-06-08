@@ -1,5 +1,5 @@
 # Key-Value Store
-I created a key-value storage engine that is similar to Bitcask. I wrote this in Python because I wanted to emphasize getting a hands-on perspective of database internals. 
+I created a key-value storage engine that is similar to Bitcask. I wrote this in Python because I wanted to emphasize getting a hands-on perspective of database internals. (I limited myself to not use any ai-generated code. I still asked llms about what would be considered the canonical way of doing something, but I didn't always agree. Otherwise I used llms to help format my documentation)
 
 A friend of mine, an ex Google SRE, recommended that I study “Designing Data-Intensive Applications” by Martin Kleppmann in my first year of transitioning from biology to computer science (which is a bit wild to think about now), so we went through the book chapter by chapter. 
 
